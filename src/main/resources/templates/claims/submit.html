@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Claim - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card" style="max-width: 600px; margin: 20px auto;">
+            <h2 class="card-title">File Medical Reimbursement Claim</h2>
+
+            <div id="alert-box" style="display: none;" class="alert"></div>
+
+            <form id="claim-form" enctype="multipart/form-data" novalidate>
+                <div class="form-group">
+                    <label for="policyId">Select Insured Policy *</label>
+                    <select id="policyId" class="form-control" required>
+                        <option value="">-- Choose Active Policy --</option>
+                        <option th:each="pol : ${policies}"
+                                th:value="${pol.id}"
+                                th:text="${pol.policyNumber} + ' - ' + ${pol.planName} + ' (' + ${pol.status} + ')'">
+                        </option>
+                    </select>
+                    <span class="field-error" id="err-policyId"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="claimAmount">Claim Amount (Rs. LKR) *</label>
+                    <input type="number" id="claimAmount" class="form-control" step="0.01" min="1" placeholder="e.g. 85000.00" required>
+                    <span class="field-error" id="err-claimAmount"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="hospitalName">Hospital / Medical Center *</label>
+                    <input type="text" id="hospitalName" class="form-control" placeholder="e.g. Asiri Central Hospital, Nawaloka Hospital, Lanka Hospitals" required>
+                    <span class="field-error" id="err-hospitalName"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Treatment & Diagnosis Summary *</label>
+                    <textarea id="description" class="form-control" rows="3" placeholder="e.g. Inpatient treatment for dengue fever, IV fluid therapy and platelet monitoring" required></textarea>
+                    <span class="field-error" id="err-description"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="files">Upload Medical Bills & Receipts (PDF / Images)</label>
+                    <input type="file" id="files" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png">
+                    <small style="color: var(--text-muted);">You can select multiple invoices/bills.</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Submit Claim for Review</button>
+                <a th:href="@{/claims/my}" class="btn btn-secondary btn-block" style="margin-top: 8px;">View My Claims</a>
+            </form>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function setClaimError(id, msg) {
+            const input = document.getElementById(id);
+            const err = document.getElementById('err-' + id);
+            if (msg) {
+                input.classList.add('is-invalid');
+                err.textContent = msg;
+                err.classList.add('visible');
+            } else {
+                input.classList.remove('is-invalid');
+                err.textContent = '';
+                err.classList.remove('visible');
+            }
+        }
+
+        document.getElementById('policyId').addEventListener('change', function() {
+            if (this.value) setClaimError('policyId', '');
+        });
+        document.getElementById('claimAmount').addEventListener('input', function() {
+            if (parseFloat(this.value) > 0) setClaimError('claimAmount', '');
+        });
+        document.getElementById('hospitalName').addEventListener('input', function() {
+            if (this.value.trim().length >= 2) setClaimError('hospitalName', '');
+        });
+        document.getElementById('description').addEventListener('input', function() {
+            if (this.value.trim().length >= 5) setClaimError('description', '');
+        });
+
+        document.getElementById('claim-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            alertBox.style.display = 'none';
+
+            const policyId = document.getElementById('policyId').value;
+            const claimAmount = parseFloat(document.getElementById('claimAmount').value);
+            const hospitalName = document.getElementById('hospitalName').value.trim();
+            const description = document.getElementById('description').value.trim();
+
+            let valid = true;
+            if (!policyId) {
+                setClaimError('policyId', 'Please select an active policy');
+                valid = false;
+            }
+            if (!claimAmount || isNaN(claimAmount) || claimAmount <= 0) {
+                setClaimError('claimAmount', 'Please enter a valid claim amount greater than 0');
+                valid = false;
+            }
+            if (!hospitalName || hospitalName.length < 2) {
+                setClaimError('hospitalName', 'Hospital or medical center name is required');
+                valid = false;
+            }
+            if (!description || description.length < 5) {
+                setClaimError('description', 'Please provide a diagnosis or treatment summary (minimum 5 characters)');
+                valid = false;
+            }
+
+            if (!valid) return;
+
+            const formData = new FormData();
+            const claimData = {
+                policyId: parseInt(policyId, 10),
+                claimAmount: claimAmount,
+                claimType: 'REIMBURSEMENT',
+                hospitalName: hospitalName,
+                description: description
+            };
+
+            const dataBlob = new Blob([JSON.stringify(claimData)], { type: 'application/json' });
+            formData.append('data', dataBlob);
+
+            const fileInput = document.getElementById('files');
+            if (fileInput.files.length > 0) {
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append('files', fileInput.files[i]);
+                }
+            }
+
+            fetch('/api/claims/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Submission failed');
+                }
+                alertBox.className = 'alert alert-success';
+                alertBox.textContent = 'Claim #' + data.claimNumber + ' successfully submitted!';
+                alertBox.style.display = 'block';
+
+                setTimeout(() => {
+                    window.location.href = '/claims/my';
+                }, 1500);
+            })
+            .catch(error => {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = error.message;
+                alertBox.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

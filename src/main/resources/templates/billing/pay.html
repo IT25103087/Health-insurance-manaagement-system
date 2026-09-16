@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Premium - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card" style="max-width: 550px; margin: 20px auto;">
+            <h2 class="card-title">Online Premium Payment</h2>
+
+            <div id="alert-box" style="display: none;" class="alert"></div>
+
+            <form id="payment-form">
+                <div class="form-group">
+                    <label for="policyId">Select Active Policy *</label>
+                    <select id="policyId" class="form-control" required>
+                        <option value="">-- Choose Policy --</option>
+                        <option th:each="pol : ${policies}"
+                                th:value="${pol.id}"
+                                th:text="${pol.policyNumber} + ' (' + ${pol.planName} + ')'"
+                                th:selected="${selectedPolicyId != null and selectedPolicyId == pol.id}">
+                        </option>
+                    </select>
+                    <span class="field-error" id="err-policyId"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="amount">Payment Amount (Rs. LKR) *</label>
+                    <input type="number" id="amount" class="form-control" step="0.01" min="1" placeholder="e.g. 8500.00" required>
+                    <span class="field-error" id="err-amount"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="paymentMethod">Payment Method *</label>
+                    <select id="paymentMethod" class="form-control" onchange="toggleCardFields()">
+                        <option value="CREDIT_CARD">Credit / Debit Card</option>
+                        <option value="BANK_TRANSFER">Direct Bank Transfer</option>
+                    </select>
+                </div>
+
+                <div id="card-fields">
+                    <div class="form-group">
+                        <label for="cardNumber">Card Number</label>
+                        <input type="text" id="cardNumber" class="form-control" placeholder="4111 2222 3333 4444" maxlength="19">
+                        <span class="field-error" id="err-cardNumber"></span>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expiry">Expiry (MM/YY)</label>
+                            <input type="text" id="expiry" class="form-control" placeholder="12/28" maxlength="5">
+                            <span class="field-error" id="err-expiry"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="cvv">CVV</label>
+                            <input type="password" id="cvv" class="form-control" placeholder="123" maxlength="4">
+                            <span class="field-error" id="err-cvv"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Authorize & Pay Premium</button>
+                <a th:href="@{/policies/my}" class="btn btn-secondary btn-block" style="margin-top: 8px;">Cancel</a>
+            </form>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function toggleCardFields() {
+            const method = document.getElementById('paymentMethod').value;
+            document.getElementById('card-fields').style.display = method === 'CREDIT_CARD' ? 'block' : 'none';
+        }
+
+        function setPayError(id, msg) {
+            const input = document.getElementById(id);
+            const err = document.getElementById('err-' + id);
+            if (!err) return;
+            if (msg) {
+                input.classList.add('is-invalid');
+                err.textContent = msg;
+                err.classList.add('visible');
+            } else {
+                input.classList.remove('is-invalid');
+                err.textContent = '';
+                err.classList.remove('visible');
+            }
+        }
+
+        document.getElementById('policyId').addEventListener('change', function() {
+            if (this.value) setPayError('policyId', '');
+        });
+        document.getElementById('amount').addEventListener('input', function() {
+            if (parseFloat(this.value) > 0) setPayError('amount', '');
+        });
+        document.getElementById('cardNumber').addEventListener('input', function() {
+            setPayError('cardNumber', '');
+        });
+        document.getElementById('expiry').addEventListener('input', function() {
+            setPayError('expiry', '');
+        });
+        document.getElementById('cvv').addEventListener('input', function() {
+            setPayError('cvv', '');
+        });
+
+        document.getElementById('payment-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            alertBox.style.display = 'none';
+
+            const policyId = document.getElementById('policyId').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const method = document.getElementById('paymentMethod').value;
+
+            let valid = true;
+            if (!policyId) {
+                setPayError('policyId', 'Please select an active policy');
+                valid = false;
+            }
+            if (!amount || isNaN(amount) || amount <= 0) {
+                setPayError('amount', 'Please enter a valid payment amount');
+                valid = false;
+            }
+
+            if (method === 'CREDIT_CARD') {
+                const card = document.getElementById('cardNumber').value.replace(/\s+/g, '');
+                const expiry = document.getElementById('expiry').value.trim();
+                const cvv = document.getElementById('cvv').value.trim();
+
+                if (!card || card.length < 13 || card.length > 19 || !/^\d+$/.test(card)) {
+                    setPayError('cardNumber', 'Please enter a valid card number (13-19 digits)');
+                    valid = false;
+                }
+                if (!expiry || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) {
+                    setPayError('expiry', 'Format must be MM/YY (e.g. 12/28)');
+                    valid = false;
+                }
+                if (!cvv || cvv.length < 3 || cvv.length > 4 || !/^\d+$/.test(cvv)) {
+                    setPayError('cvv', 'CVV must be 3 or 4 digits');
+                    valid = false;
+                }
+            }
+
+            if (!valid) return;
+
+            const payload = {
+                policyId: parseInt(policyId, 10),
+                amount: amount,
+                paymentMethod: method,
+                cardNumber: document.getElementById('cardNumber').value,
+                expiryDate: document.getElementById('expiry').value,
+                cvv: document.getElementById('cvv').value
+            };
+
+            fetch('/api/billing/pay', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Payment failed');
+                }
+                alertBox.className = 'alert alert-success';
+                alertBox.textContent = 'Payment successful! Transaction reference: ' + data.transactionReference;
+                alertBox.style.display = 'block';
+
+                setTimeout(() => {
+                    window.location.href = '/billing/history';
+                }, 1500);
+            })
+            .catch(error => {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = error.message;
+                alertBox.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

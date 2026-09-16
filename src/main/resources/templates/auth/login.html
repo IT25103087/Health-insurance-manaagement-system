@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h2>Sign In</h2>
+                <p>Access your health insurance portal</p>
+            </div>
+
+            <div id="alert-box" style="display: none;" class="alert"></div>
+
+            <div th:if="${param.logout}" class="alert alert-info">
+                You have been logged out successfully.
+            </div>
+
+            <form id="login-form" novalidate>
+                <div class="form-group">
+                    <label for="username">Username or Email</label>
+                    <input type="text" id="username" class="form-control" placeholder="Enter your username or email" required autofocus autocomplete="username">
+                    <span class="field-error" id="err-username"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+                    <span class="field-error" id="err-password"></span>
+                </div>
+
+                <div style="margin-bottom: 18px; text-align: right;">
+                    <a th:href="@{/forgot-password}" style="font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 500;">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Sign In to Account</button>
+            </form>
+
+            <div style="margin-top: 22px; text-align: center; font-size: 14px;">
+                <span style="color: var(--text-muted);">Don't have an account? </span>
+                <a th:href="@{/register}" style="color: var(--accent); font-weight: 600; text-decoration: none;">Create Account</a>
+            </div>
+
+            <!-- Quick Demo Credentials Helper -->
+            <div style="margin-top: 24px; padding-top: 18px; border-top: 1px dashed var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Demo Quick-Fill</span>
+                    <span style="font-size: 11px; color: var(--text-muted);">Click role to test</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <button type="button" class="badge badge-info" style="cursor: pointer; border: none; font-size: 11.5px; padding: 4px 9px;" onclick="fillDemo('customer', 'Kasun#Pass2026')">Customer</button>
+                    <button type="button" class="badge badge-primary" style="cursor: pointer; border: none; font-size: 11.5px; padding: 4px 9px;" onclick="fillDemo('admin', 'Admin#Pass2026')">Admin</button>
+                    <button type="button" class="badge badge-warning" style="cursor: pointer; border: none; font-size: 11.5px; padding: 4px 9px;" onclick="fillDemo('officer', 'Claims#Pass2026')">Claims Officer</button>
+                    <button type="button" class="badge badge-success" style="cursor: pointer; border: none; font-size: 11.5px; padding: 4px 9px;" onclick="fillDemo('hospital', 'Asiri#Pass2026')">Hospital Desk</button>
+                    <button type="button" class="badge badge-secondary" style="cursor: pointer; border: none; font-size: 11.5px; padding: 4px 9px;" onclick="fillDemo('manager', 'Ops#Pass2026')">Ops Manager</button>
+                    <button type="button" class="badge badge-light" style="cursor: pointer; border: 1px solid var(--border); font-size: 11.5px; padding: 4px 9px; background: #fff; color: var(--slate-700);" onclick="fillDemo('support', 'Support#Pass2026')">Support</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function fillDemo(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            setLoginError('username', '');
+            setLoginError('password', '');
+            const alertBox = document.getElementById('alert-box');
+            if (alertBox) alertBox.style.display = 'none';
+        }
+
+        // Clean up any legacy localStorage entries from earlier builds
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('user_role');
+
+        function setLoginError(fieldId, errorMsg) {
+            const input = document.getElementById(fieldId);
+            const errSpan = document.getElementById('err-' + fieldId);
+            if (errorMsg) {
+                input.classList.add('is-invalid');
+                errSpan.textContent = errorMsg;
+                errSpan.classList.add('visible');
+            } else {
+                input.classList.remove('is-invalid');
+                errSpan.textContent = '';
+                errSpan.classList.remove('visible');
+            }
+        }
+
+        document.getElementById('username').addEventListener('input', function() {
+            if (this.value.trim()) setLoginError('username', '');
+        });
+
+        document.getElementById('password').addEventListener('input', function() {
+            if (this.value) setLoginError('password', '');
+        });
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            alertBox.style.display = 'none';
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            let valid = true;
+            if (!username) {
+                setLoginError('username', 'Please enter your username or email');
+                valid = false;
+            }
+            if (!password) {
+                setLoginError('password', 'Please enter your password');
+                valid = false;
+            }
+
+            if (!valid) return;
+
+            const payload = { username, password };
+
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Invalid username or password');
+                }
+                // Cookie is set automatically via HttpOnly Set-Cookie header
+                window.location.href = '/dashboard';
+            })
+            .catch(error => {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = error.message;
+                alertBox.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

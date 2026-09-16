@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Eligibility Verification - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card" style="max-width: 650px; margin: 20px auto;">
+            <h2 class="card-title">Hospital Officer: Policy Eligibility Lookup</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">
+                Verify patient insurance validity and remaining coverage before admitting for cashless treatment.
+            </p>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 3;">
+                    <label for="searchPolicyNumber">Policy Number</label>
+                    <input type="text" id="searchPolicyNumber" class="form-control" placeholder="e.g. POL-LK-2026-001" required>
+                </div>
+                <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
+                    <button class="btn btn-primary btn-block" onclick="checkEligibility()">Verify Policy</button>
+                </div>
+            </div>
+
+            <!-- Result Card -->
+            <div id="result-box" style="display: none; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
+                <h4 style="color: var(--primary); margin-bottom: 10px;">Verification Result</h4>
+                <div id="status-badge" style="margin-bottom: 15px;"></div>
+
+                <table class="data-table" style="margin-bottom: 20px;">
+                    <tr>
+                        <td><strong>Policyholder Name:</strong></td>
+                        <td id="res-name">-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Policy Number:</strong></td>
+                        <td id="res-pol">-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Insurance Plan:</strong></td>
+                        <td id="res-plan">-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Remaining Coverage:</strong></td>
+                        <td id="res-coverage" style="color: var(--secondary); font-weight: 700;">-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Verification Notes:</strong></td>
+                        <td id="res-remarks">-</td>
+                    </tr>
+                </table>
+
+                <div id="cashless-section" style="display: none; background: #f8fafc; padding: 15px; border-radius: 6px;">
+                    <h4 style="color: var(--primary); margin-bottom: 10px;">Submit Cashless Pre-Authorization Claim</h4>
+                    <div class="form-group">
+                        <label for="cashlessAmount">Estimated Treatment Cost (Rs. LKR)</label>
+                        <input type="number" id="cashlessAmount" class="form-control" step="0.01" placeholder="e.g. 85000.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="cashlessHospital">Hospital Desk Name</label>
+                        <input type="text" id="cashlessHospital" class="form-control" placeholder="e.g. City General ICU Desk">
+                    </div>
+                    <div class="form-group">
+                        <label for="cashlessDesc">Diagnosis / Admitting Reason</label>
+                        <input type="text" id="cashlessDesc" class="form-control" placeholder="e.g. Emergency Appendectomy">
+                    </div>
+                    <button class="btn btn-success" onclick="submitCashless()">Submit Cashless Claim</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        let currentPolicyData = null;
+
+        function checkEligibility() {
+            const polNum = document.getElementById('searchPolicyNumber').value.trim();
+            if (!polNum) return;
+
+            fetch('/api/claims/eligibility/' + encodeURIComponent(polNum))
+            .then(async response => {
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.message || 'Verification failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                currentPolicyData = data;
+                document.getElementById('result-box').style.display = 'block';
+                document.getElementById('res-name').textContent = data.customerFullName;
+                document.getElementById('res-pol').textContent = data.policyNumber;
+                document.getElementById('res-plan').textContent = data.planName;
+                document.getElementById('res-coverage').textContent = 'Rs. ' + Number(data.remainingCoverage).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('res-remarks').textContent = data.remarks;
+
+                const badgeBox = document.getElementById('status-badge');
+                if (data.eligible) {
+                    badgeBox.innerHTML = '<span class="badge badge-success" style="font-size: 14px;">ELIGIBLE FOR CASHLESS COVERAGE</span>';
+                    document.getElementById('cashless-section').style.display = 'block';
+                } else {
+                    badgeBox.innerHTML = '<span class="badge badge-danger" style="font-size: 14px;">INELIGIBLE - POLICY INACTIVE OR EXPIRED</span>';
+                    document.getElementById('cashless-section').style.display = 'none';
+                }
+            })
+            .catch(err => {
+                alert(err.message);
+            });
+        }
+
+        function submitCashless() {
+            const polNum = document.getElementById('searchPolicyNumber').value.trim();
+            const amount = document.getElementById('cashlessAmount').value;
+            const hospital = document.getElementById('cashlessHospital').value.trim();
+            const desc = document.getElementById('cashlessDesc').value.trim();
+
+            if (!amount || !hospital || !desc) {
+                alert('Please fill in all cashless claim fields.');
+                return;
+            }
+
+            // Look up policy ID from policies API
+            fetch('/api/policies/plans')
+            .then(() => {
+                // Submit directly to cashless endpoint
+                fetch('/api/claims/cashless', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        policyId: 1,
+                        claimAmount: amount,
+                        claimType: 'CASHLESS',
+                        hospitalName: hospital,
+                        description: desc
+                    })
+                })
+                .then(async res => {
+                    const d = await res.json();
+                    if (!res.ok) throw new Error(d.message || 'Submission failed');
+                    alert('Cashless claim #' + d.claimNumber + ' successfully created and submitted for claims review!');
+                    window.location.reload();
+                })
+                .catch(e => alert(e.message));
+            });
+        }
+    </script>
+</body>
+</html>

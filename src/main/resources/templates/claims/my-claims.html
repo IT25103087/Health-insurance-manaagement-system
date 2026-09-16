@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Claims - HealthShield</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="page-header" style="margin-bottom: 24px;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--slate-400); margin-bottom: 6px;">
+                    <a th:href="@{/dashboard}" style="color: var(--primary); text-decoration: none; font-weight: 500;">Dashboard</a>
+                    <span>/</span>
+                    <span style="color: var(--slate-600); font-weight: 500;">Reimbursement Claims</span>
+                </div>
+                <h1 style="font-size: 26px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.025em; margin: 0;">
+                    My Reimbursement Claims
+                </h1>
+                <p style="font-size: 13.5px; color: var(--slate-500); margin-top: 4px; margin-bottom: 0;">
+                    Track real-time adjudication decisions, update pending medical bills, and view disbursed insurance settlements.
+                </p>
+            </div>
+            <div>
+                <a th:href="@{/claims/submit}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    File New Claim
+                </a>
+            </div>
+        </div>
+
+        <div class="grid-stats grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 24px;">
+            <div class="stat-card stat-primary">
+                <div class="stat-card-header">
+                    <div class="stat-icon-wrapper">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    </div>
+                    <span class="stat-pill">Submitted</span>
+                </div>
+                <div class="stat-card-label">Total Claims Filed</div>
+                <div class="stat-card-value" th:text="${#lists.size(claims)}">0</div>
+                <div class="stat-card-subtext">All hospital reimbursement claims</div>
+            </div>
+
+            <div class="stat-card stat-success">
+                <div class="stat-card-header">
+                    <div class="stat-icon-wrapper">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    </div>
+                    <span class="stat-pill">Settled</span>
+                </div>
+                <div class="stat-card-label">Approved Claims</div>
+                <div class="stat-card-value" th:text="${#lists.size(claims.?[status == 'APPROVED'])}">0</div>
+                <div class="stat-card-subtext">Adjudicated & authorized payouts</div>
+            </div>
+
+            <div class="stat-card stat-warning">
+                <div class="stat-card-header">
+                    <div class="stat-icon-wrapper">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <span class="stat-pill">In Queue</span>
+                </div>
+                <div class="stat-card-label">Pending Adjudication</div>
+                <div class="stat-card-value" th:text="${#lists.size(claims.?[status == 'SUBMITTED' or status == 'UNDER_REVIEW'])}">0</div>
+                <div class="stat-card-subtext">Claims eligible for edit or cancellation</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--slate-100); flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: var(--slate-900); margin: 0;">Claims Ledger</h3>
+                    <p style="font-size: 12.5px; color: var(--slate-500); margin: 2px 0 0 0;">Complete audit trail of reimbursement claims and adjudication decisions.</p>
+                </div>
+                <span class="badge badge-info" th:text="${#lists.size(claims)} + ' Claims Recorded'">0 Claims</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Claim ID</th>
+                            <th>Policy Number</th>
+                            <th>Type</th>
+                            <th>Claimed Amount</th>
+                            <th>Approved Payout</th>
+                            <th>Adjudication Status</th>
+                            <th>Hospital / Clinic</th>
+                            <th>Submitted On</th>
+                            <th>Attached Bills</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(claims)}">
+                            <td colspan="10" style="text-align: center; color: var(--slate-400); padding: 48px 16px;">
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                                    <div style="width: 48px; height: 48px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    </div>
+                                    <strong style="color: var(--slate-700); font-size: 15px;">No Medical Claims Filed</strong>
+                                    <span style="font-size: 13px; max-width: 360px;">You haven't filed any reimbursement requests yet. Easily file a new claim online with attached hospital receipts.</span>
+                                    <a th:href="@{/claims/submit}" class="btn btn-primary btn-sm" style="margin-top: 6px;">File Your First Claim</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:each="c : ${claims}">
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    <strong th:text="${c.claimNumber}" style="font-family: monospace; font-size: 13px; color: var(--slate-900);">CLM-123456</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <span th:text="${c.policyNumber}" style="font-family: monospace; font-size: 12.5px; color: var(--slate-600); background: var(--slate-50); border: 1px solid var(--slate-200); padding: 2px 7px; border-radius: var(--radius-sm);">POL-123456</span>
+                            </td>
+                            <td>
+                                <span style="font-size: 11.5px; font-weight: 600; color: var(--slate-600); text-transform: uppercase;" th:text="${c.claimType}">REIMBURSEMENT</span>
+                            </td>
+                            <td>
+                                <strong style="color: var(--slate-800); font-size: 13px;">Rs. <span th:text="${#numbers.formatDecimal(c.claimAmount, 0, 'COMMA', 2, 'POINT')}">85,000.00</span></strong>
+                            </td>
+                            <td>
+                                <span th:if="${c.approvedAmount != null and c.approvedAmount > 0}" style="color: var(--emerald-700); font-weight: 700; font-size: 13px;" th:text="'Rs. ' + ${#numbers.formatDecimal(c.approvedAmount, 0, 'COMMA', 2, 'POINT')}">Rs. 85,000.00</span>
+                                <span th:unless="${c.approvedAmount != null and c.approvedAmount > 0}" style="color: var(--slate-400); font-size: 13px;">-</span>
+                            </td>
+                            <td>
+                                <span th:if="${c.status == 'SUBMITTED'}" class="badge badge-info">
+                                    <span class="badge-dot"></span>SUBMITTED
+                                </span>
+                                <span th:if="${c.status == 'UNDER_REVIEW'}" class="badge badge-warning">
+                                    <span class="badge-dot"></span>UNDER REVIEW
+                                </span>
+                                <span th:if="${c.status == 'APPROVED'}" class="badge badge-success">
+                                    <span class="badge-dot"></span>APPROVED
+                                </span>
+                                <span th:if="${c.status == 'REJECTED'}" class="badge badge-danger">
+                                    <span class="badge-dot"></span>REJECTED
+                                </span>
+                                <span th:if="${c.status == 'CANCELLED'}" class="badge badge-danger">
+                                    <span class="badge-dot"></span>CANCELLED
+                                </span>
+                                <span th:if="${c.status == 'ESCALATED'}" class="badge badge-primary">
+                                    <span class="badge-dot"></span>ESCALATED
+                                </span>
+                                <span th:if="${c.status == 'FRAUD_FLAGGED'}" class="badge badge-danger">
+                                    <span class="badge-dot"></span>FRAUD AUDIT
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 5px; color: var(--slate-700); font-size: 12.5px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--slate-400); flex-shrink: 0;"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v1"></path><path d="M9 13v1"></path><path d="M9 17v1"></path></svg>
+                                    <span th:text="${c.hospitalName}">General Hospital</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 4px; color: var(--slate-500); font-size: 12.5px;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--slate-400);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <span th:text="${c.submittedAt != null ? #temporals.format(c.submittedAt, 'yyyy-MM-dd') : '-'}">2026-09-16</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span th:if="${#lists.isEmpty(c.documentNames)}" style="color: var(--slate-400); font-size: 12px;">None</span>
+                                <div th:unless="${#lists.isEmpty(c.documentNames)}" style="display: flex; flex-direction: column; gap: 2px;">
+                                    <div th:each="doc : ${c.documentNames}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--primary); background: var(--primary-soft); border: 1px solid var(--primary-border); padding: 2px 6px; border-radius: var(--radius-sm); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                                        <span th:text="${doc}">bill.pdf</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div th:if="${c.status == 'SUBMITTED' or c.status == 'UNDER_REVIEW'}" style="display: flex; gap: 6px; align-items: center;">
+                                    <a th:href="@{'/claims/' + ${c.id} + '/edit'}" class="btn btn-sm btn-secondary" title="Edit Claim Details" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Edit
+                                    </a>
+                                    <form th:action="@{'/claims/' + ${c.id} + '/cancel'}" method="post" style="display: inline;"
+                                          onsubmit="return confirm('Are you sure you want to cancel this claim?');">
+                                        <button type="submit" class="btn btn-sm btn-danger-outline" title="Cancel & Withdraw Claim" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                            Cancel
+                                        </button>
+                                    </form>
+                                </div>
+                                <div th:unless="${c.status == 'SUBMITTED' or c.status == 'UNDER_REVIEW'}" style="display: inline-flex; align-items: center; gap: 4px; color: var(--slate-400); font-size: 12px; font-weight: 500;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    Locked
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+</body>
+</html>

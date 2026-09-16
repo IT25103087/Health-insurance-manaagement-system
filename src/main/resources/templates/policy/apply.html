@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for Policy - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card" style="max-width: 600px; margin: 20px auto;">
+            <h2 class="card-title">Policy Enrollment Application</h2>
+
+            <div id="alert-box" style="display: none;" class="alert"></div>
+
+            <div class="card" style="background: #f8fafc; margin-bottom: 20px;">
+                <h4 style="color: var(--primary);" th:text="${plan.planName}">Selected Plan</h4>
+                <p style="color: var(--text-muted); font-size: 13px;" th:text="${plan.description}">Description</p>
+                <div style="margin-top: 10px; font-size: 14px;">
+                    <span>Coverage: <strong>$<span th:text="${plan.coverageAmount}"></span></strong></span> |
+                    <span>Monthly Premium: <strong>$<span th:text="${plan.monthlyPremium}"></span></strong></span>
+                </div>
+            </div>
+
+            <form id="apply-form">
+                <input type="hidden" id="planId" th:value="${plan.id}">
+
+                <div class="form-group">
+                    <label for="medicalNotes">Pre-existing Conditions / Medical Notes (Optional)</label>
+                    <textarea id="medicalNotes" class="form-control" rows="3" placeholder="None or list any relevant conditions"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="agreeTerms" required>
+                        I confirm the information provided is accurate and agree to the policy terms.
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Submit Application & Issue Policy</button>
+                <a th:href="@{/policies/plans}" class="btn btn-secondary btn-block" style="margin-top: 8px;">Back to Plans</a>
+            </form>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        document.getElementById('apply-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            alertBox.style.display = 'none';
+
+            const payload = {
+                planId: document.getElementById('planId').value
+            };
+
+            fetch('/api/policies/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Application failed');
+                }
+                alertBox.className = 'alert alert-success';
+                alertBox.textContent = 'Policy ' + data.policyNumber + ' successfully issued!';
+                alertBox.style.display = 'block';
+
+                setTimeout(() => {
+                    window.location.href = '/policies/my';
+                }, 1500);
+            })
+            .catch(error => {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = error.message;
+                alertBox.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Plans - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card">
+            <h2 class="card-title">Available Health Insurance Plans</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">
+                Compare our certified healthcare plans and choose the coverage that fits your needs.
+            </p>
+
+            <div class="plans-grid">
+                <div class="plan-card" th:each="plan : ${plans}">
+                    <div>
+                        <span class="badge badge-primary" style="margin-bottom: 12px;">Certified Plan</span>
+                        <h3 class="plan-name" th:text="${plan.planName}">Basic Plan</h3>
+                        <p style="color: var(--text-muted); font-size: 14px; min-height: 42px;" th:text="${plan.description}">Description</p>
+                        
+                        <div class="plan-price">
+                            Rs. <span th:text="${#numbers.formatDecimal(plan.monthlyPremium, 0, 'COMMA', 2, 'POINT')}">3,500.00</span>
+                            <span>/ month</span>
+                        </div>
+                        
+                        <ul class="plan-features">
+                            <li>Maximum Coverage: <strong>Rs. <span th:text="${#numbers.formatDecimal(plan.coverageAmount, 0, 'COMMA', 2, 'POINT')}">750,000.00</span></strong></li>
+                            <li>Duration: <strong th:text="${plan.durationMonths}">12</strong> Months</li>
+                            <li>Network: Registered Sri Lankan Hospitals (Asiri, Nawaloka, Lanka Hospitals, Durdans)</li>
+                            <li>Cashless Pre-Authorization Included</li>
+                        </ul>
+                    </div>
+                    <a th:href="@{/policies/apply(planId=${plan.id})}" class="btn btn-primary btn-block">Apply for Plan</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+</body>
+</html>

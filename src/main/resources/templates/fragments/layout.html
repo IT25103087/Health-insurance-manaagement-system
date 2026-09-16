@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle != null ? pageTitle + ' - HealthShield' : 'HealthShield - Health Insurance System'}">HealthShield - Health Insurance System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <!-- Reusable Top Navigation Bar Fragment -->
+    <header th:fragment="navbar">
+        <div class="navbar">
+            <div class="nav-left">
+                <a th:href="${#authorization.expression('isAuthenticated()') ? '/dashboard' : '/'}" class="nav-brand">
+                    <span class="nav-brand-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="m9 12 2 2 4-4"/>
+                        </svg>
+                    </span>
+                    <span class="nav-brand-text">HealthShield</span>
+                </a>
+
+                <!-- Authenticated Navigation Links -->
+                <nav sec:authorize="isAuthenticated()">
+                    <ul class="nav-links">
+                        <li>
+                            <a th:href="@{/dashboard}" class="nav-link">Dashboard</a>
+                        </li>
+
+                        <!-- CUSTOMER POLICYHOLDER NAVIGATION -->
+                        <li sec:authorize="hasRole('CUSTOMER')">
+                            <a th:href="@{/policies/plans}" class="nav-link">Plans</a>
+                        </li>
+                        <li sec:authorize="hasRole('CUSTOMER')">
+                            <a th:href="@{/policies/my}" class="nav-link">My Policies</a>
+                        </li>
+                        <li sec:authorize="hasRole('CUSTOMER')">
+                            <a th:href="@{/claims/my}" class="nav-link">Claims</a>
+                        </li>
+                        <li sec:authorize="hasRole('CUSTOMER')">
+                            <a th:href="@{/billing/history}" class="nav-link">Payments</a>
+                        </li>
+
+                        <!-- SYSTEM ADMINISTRATOR NAVIGATION -->
+                        <li sec:authorize="hasRole('SYSTEM_ADMIN')">
+                            <a th:href="@{/admin/users}" class="nav-link">User Accounts</a>
+                        </li>
+                        <li sec:authorize="hasRole('SYSTEM_ADMIN')">
+                            <a th:href="@{/reporting/analytics}" class="nav-link">Analytics</a>
+                        </li>
+
+                        <!-- INSURANCE AGENT NAVIGATION -->
+                        <li sec:authorize="hasRole('INSURANCE_AGENT')">
+                            <a th:href="@{/policies/plans}" class="nav-link">Plans</a>
+                        </li>
+                        <li sec:authorize="hasRole('INSURANCE_AGENT')">
+                            <a th:href="@{/policies/my}" class="nav-link">Client Policies</a>
+                        </li>
+
+                        <!-- CLAIMS OFFICER NAVIGATION -->
+                        <li sec:authorize="hasRole('CLAIMS_OFFICER')">
+                            <a th:href="@{/claims-review/queue}" class="nav-link">Review Queue</a>
+                        </li>
+
+                        <!-- HOSPITAL OFFICER NAVIGATION -->
+                        <li sec:authorize="hasRole('HOSPITAL_OFFICER')">
+                            <a th:href="@{/claims/eligibility}" class="nav-link">Hospital Desk</a>
+                        </li>
+
+                        <!-- OPERATIONS MANAGER NAVIGATION -->
+                        <li class="nav-dropdown" sec:authorize="hasRole('OPERATIONS_MANAGER')">
+                            <button type="button" class="nav-dropdown-toggle">
+                                Management <span class="nav-caret"></span>
+                            </button>
+                            <div class="nav-dropdown-menu">
+                                <a th:href="@{/reporting/analytics}" class="nav-dropdown-item">Analytics</a>
+                                <a th:href="@{/claims-review/queue}" class="nav-dropdown-item">Review Queue</a>
+                                <a th:href="@{/billing/refunds}" class="nav-dropdown-item">Refunds</a>
+                            </div>
+                        </li>
+
+                        <!-- SUPPORT REP NAVIGATION -->
+                        <li sec:authorize="hasRole('SUPPORT_REP')">
+                            <a th:href="@{/billing/refunds}" class="nav-link">Refunds</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+
+            <!-- Nav Right Area -->
+            <div class="nav-right">
+                <div sec:authorize="!isAuthenticated()" style="display: flex; align-items: center; gap: 10px;">
+                    <a th:href="@{/login}" class="nav-link-login">Log in</a>
+                    <a th:href="@{/register}" class="btn-nav-register">Create account</a>
+                </div>
+
+                <!-- Authenticated User Profile & Logout -->
+                <div sec:authorize="isAuthenticated()" style="display: flex; align-items: center; gap: 10px;">
+                    <a th:href="@{/profile}" class="nav-profile-btn" title="View Account Profile">
+                        <div class="nav-avatar-circle">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <div class="nav-profile-text">
+                            <span class="nav-profile-name" sec:authentication="name">User</span>
+                            <span class="nav-profile-label">Profile</span>
+                        </div>
+                        <span class="nav-avatar-dot" title="Active"></span>
+                    </a>
+                    <a th:href="@{/logout}" class="btn-logout">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var currentPath = window.location.pathname;
+                var allLinks = document.querySelectorAll('.nav-link, .nav-dropdown-item');
+
+                allLinks.forEach(function(link) {
+                    var href = link.getAttribute('href');
+                    if (!href) return;
+
+                    var isExact = (currentPath === href);
+                    var isSubPath = (href !== '/' && href !== '/dashboard' && currentPath.indexOf(href) === 0);
+
+                    if (isExact || isSubPath) {
+                        link.classList.add('active');
+                        var parentDropdown = link.closest('.nav-dropdown');
+                        if (parentDropdown) {
+                            var toggle = parentDropdown.querySelector('.nav-dropdown-toggle');
+                            if (toggle) toggle.classList.add('active');
+                        }
+                    }
+                });
+
+                var dropdownToggles = document.querySelectorAll('.nav-dropdown-toggle');
+                dropdownToggles.forEach(function(toggle) {
+                    toggle.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var menu = this.nextElementSibling;
+                        if (menu) {
+                            var wasShown = menu.classList.contains('show');
+                            document.querySelectorAll('.nav-dropdown-menu').forEach(function(m) {
+                                m.classList.remove('show');
+                            });
+                            if (!wasShown) {
+                                menu.classList.add('show');
+                            }
+                        }
+                    });
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.nav-dropdown')) {
+                        document.querySelectorAll('.nav-dropdown-menu').forEach(function(m) {
+                            m.classList.remove('show');
+                        });
+                    }
+                });
+            });
+        </script>
+    </header>
+
+    <!-- Reusable Footer Fragment -->
+    <footer th:fragment="footer" style="display: none;"></footer>
+
+</body>
+</html>

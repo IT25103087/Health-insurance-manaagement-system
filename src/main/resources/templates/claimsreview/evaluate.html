@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Evaluation - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .eval-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: 24px;
+            margin-top: 18px;
+        }
+        @media (max-width: 900px) {
+            .eval-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .eval-section {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .eval-section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--slate-900);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .data-meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .meta-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+        }
+        .meta-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--slate-800);
+        }
+        .decision-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 600px) {
+            .decision-selector {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .decision-btn {
+            padding: 10px 8px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease-in-out;
+        }
+        .decision-btn.active.btn-act-approve {
+            background: #ecfdf5;
+            border-color: #059669;
+            color: #065f46;
+        }
+        .decision-btn.active.btn-act-reject {
+            background: #fff1f2;
+            border-color: #e11d48;
+            color: #9f1239;
+        }
+        .decision-btn.active.btn-act-escalate {
+            background: #f0f9ff;
+            border-color: #0284c7;
+            color: #0369a1;
+        }
+        .decision-btn.active.btn-act-fraud {
+            background: #fdf2f8;
+            border-color: #db2777;
+            color: #9d174d;
+        }
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #f8fafc;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--slate-700);
+        }
+    </style>
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div style="margin-bottom: 16px; font-size: 13px; color: var(--text-muted);">
+            <a th:href="@{/dashboard}" style="color: var(--primary); text-decoration: none; font-weight: 500;">Dashboard</a>
+            <span style="margin: 0 6px;">/</span>
+            <a th:href="@{/claims-review/queue}" style="color: var(--primary); text-decoration: none; font-weight: 500;">Claims Review Queue</a>
+            <span style="margin: 0 6px;">/</span>
+            <span style="color: var(--slate-700); font-weight: 600;">Evaluate Claim</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <h1 style="font-size: 22px; font-weight: 800; color: var(--slate-900); margin: 0;">Claim Adjudication & Evaluation</h1>
+                <p style="font-size: 14px; color: var(--text-muted); margin: 4px 0 0 0;">Inspect claim submission records, invoices, and record formal adjudication</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a th:href="@{/claims-review/queue}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Back to Queue
+                </a>
+            </div>
+        </div>
+
+        <div id="eval-alert" class="alert" style="display: none; margin-bottom: 20px;"></div>
+
+        <div class="eval-grid">
+            <div class="eval-section">
+                <div class="eval-section-title">
+                    <span>Claim Particulars</span>
+                    <span th:if="${claim.status == 'SUBMITTED'}" class="badge badge-info">SUBMITTED</span>
+                    <span th:if="${claim.status == 'UNDER_REVIEW'}" class="badge badge-warning">UNDER REVIEW</span>
+                    <span th:if="${claim.status == 'ESCALATED'}" class="badge badge-primary">ESCALATED</span>
+                    <span th:if="${claim.status == 'APPROVED'}" class="badge badge-success">APPROVED</span>
+                    <span th:if="${claim.status == 'REJECTED'}" class="badge badge-danger">REJECTED</span>
+                    <span th:if="${claim.status == 'CANCELLED'}" class="badge badge-secondary">CANCELLED</span>
+                    <span th:if="${claim.status == 'FRAUD_FLAGGED'}" class="badge badge-danger">FRAUD FLAGGED</span>
+                </div>
+
+                <div class="data-meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">Claim Reference</span>
+                        <span class="meta-val" th:text="${claim.claimNumber}">CLM-LK-9023</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Policy Number</span>
+                        <span class="meta-val" style="color: var(--primary);" th:text="${claim.policyNumber}">POL-LK-2026-003</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Claim Type</span>
+                        <span class="meta-val" th:text="${claim.claimType}">CASHLESS</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Total Claim Amount</span>
+                        <span class="meta-val" style="color: #0369a1; font-size: 16px;">
+                            Rs. <span th:text="${#numbers.formatDecimal(claim.claimAmount, 1, 'COMMA', 2, 'POINT')}">320,000.00</span>
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Hospital / Provider</span>
+                        <span class="meta-val" th:text="${claim.hospitalName != null ? claim.hospitalName : 'Not Specified'}">Lanka Hospitals, Colombo 05</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Submission Date</span>
+                        <span class="meta-val" th:text="${claim.submittedAt != null ? #temporals.format(claim.submittedAt, 'yyyy-MM-dd HH:mm') : '-'}">2026-03-01 10:15</span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <span class="meta-label" style="display: block; margin-bottom: 6px;">Diagnosis & Treatment Summary</span>
+                    <div style="padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--border); font-size: 13.5px; line-height: 1.5; color: var(--slate-800);"
+                         th:text="${claim.description != null ? claim.description : 'No medical description provided.'}">
+                        Cardiology diagnostic coronary angiography and overnight telemetry cardiac monitoring.
+                    </div>
+                </div>
+
+                <div>
+                    <span class="meta-label" style="display: block; margin-bottom: 8px;">Attached Invoices & Clinical Records</span>
+                    <div th:if="${#lists.isEmpty(claim.documentNames)}" style="padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--border); font-size: 13px; color: var(--text-muted); text-align: center;">
+                        No digital attachments or medical invoices uploaded for this claim.
+                    </div>
+                    <div th:unless="${#lists.isEmpty(claim.documentNames)}">
+                        <div th:each="doc : ${claim.documentNames}" class="doc-item">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); flex-shrink: 0;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            <span style="font-weight: 500; word-break: break-all;" th:text="${doc}">lanka_hospitals_preauth_request.pdf</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="eval-section">
+                <div class="eval-section-title">
+                    <span>Review History</span>
+                </div>
+                <div id="review-history-body" style="font-size: 13px; color: var(--slate-500);">Loading...</div>
+            </div>
+
+            <div class="eval-section">
+                <div class="eval-section-title">
+                    <span>Adjudication Decision</span>
+                </div>
+
+                <!-- Resolved Claim State Notice -->
+                <div th:if="${claim.status == 'APPROVED' or claim.status == 'REJECTED' or claim.status == 'CANCELLED' or claim.status == 'FRAUD_FLAGGED'}"
+                     style="padding: 16px; border-radius: 8px; margin-bottom: 20px;"
+                     th:styleappend="${claim.status == 'APPROVED'} ? 'background: #ecfdf5; border: 1px solid #059669;' : 'background: #f8fafc; border: 1px solid var(--border);'">
+                    <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;"
+                         th:styleappend="${claim.status == 'APPROVED'} ? 'color: #065f46;' : 'color: var(--slate-800);'">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span>Claim Already Adjudicated</span>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 12px 0;">
+                        This claim has concluded adjudication with status: <strong th:text="${claim.status}">APPROVED</strong>.
+                    </p>
+                    <div th:if="${claim.approvedAmount != null}" style="font-size: 13px; color: var(--slate-800); margin-bottom: 6px;">
+                        Approved Settlement Amount: <strong>Rs. <span th:text="${#numbers.formatDecimal(claim.approvedAmount, 1, 'COMMA', 2, 'POINT')}"></span></strong>
+                    </div>
+                    <div th:if="${claim.resolvedAt != null}" style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                        Settlement Timestamp: <span th:text="${#temporals.format(claim.resolvedAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    </div>
+                    <a th:href="@{/claims-review/queue}" class="btn btn-secondary btn-block">Return to Review Queue</a>
+                </div>
+
+                <!-- Open / Pending Claim Decision Form -->
+                <div th:unless="${claim.status == 'APPROVED' or claim.status == 'REJECTED' or claim.status == 'CANCELLED' or claim.status == 'FRAUD_FLAGGED'}">
+                    <div th:if="${claim.claimAmount != null and claim.claimAmount > 250000}"
+                         class="alert alert-warning" style="margin-bottom: 16px;">
+                        High-value claim: amounts above Rs. 250,000 must be escalated before approval.
+                    </div>
+                    <div class="decision-selector">
+                        <button type="button" class="decision-btn btn-act-approve active" onclick="selectAction('approve')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            <span>Approve</span>
+                        </button>
+                        <button type="button" class="decision-btn btn-act-reject" onclick="selectAction('reject')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                            <span>Reject</span>
+                        </button>
+                        <button type="button" class="decision-btn btn-act-escalate" onclick="selectAction('escalate')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Escalate</span>
+                        </button>
+                        <button type="button" class="decision-btn btn-act-fraud" onclick="selectAction('flagFraud')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span>Fraud</span>
+                        </button>
+                    </div>
+
+                    <form id="adjudication-form" onsubmit="submitAdjudication(event)">
+                        <!-- Approve Fields -->
+                        <div id="field-group-approve">
+                            <div class="form-group">
+                                <label for="approvedAmount">Approved Settlement Payout (Rs. LKR) *</label>
+                                <input type="number" id="approvedAmount" class="form-control" step="0.01" th:value="${claim.claimAmount}" required>
+                                <span class="help-text">Authorized settlement payout disbursed to customer or healthcare facility.</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="approveNotes">Adjudication Notes / Clinical Rationale</label>
+                                <textarea id="approveNotes" class="form-control" rows="3" placeholder="e.g. Verified diagnostic bills against hospital registry; meets policy entitlement"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Reject Fields -->
+                        <div id="field-group-reject" style="display: none;">
+                            <div class="form-group">
+                                <label for="rejectReason">Reason for Denial / Rejection *</label>
+                                <textarea id="rejectReason" class="form-control" rows="3" placeholder="Detail the clause, pre-existing condition, or unverified documents causing denial"></textarea>
+                                <span class="help-text">This justification will be logged to official audit history.</span>
+                            </div>
+                        </div>
+
+                        <!-- Escalate Fields -->
+                        <div id="field-group-escalate" style="display: none;">
+                            <div class="form-group">
+                                <label for="escalatePriority">Escalation Priority</label>
+                                <select id="escalatePriority" class="form-control">
+                                    <option value="NORMAL">Normal Priority</option>
+                                    <option value="HIGH" selected>High Priority</option>
+                                    <option value="CRITICAL">Critical Review</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="escalateReason">Escalation Rationale *</label>
+                                <textarea id="escalateReason" class="form-control" rows="3" placeholder="Document reason for managerial escalation (e.g. high-value surgical review)"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Fraud Fields -->
+                        <div id="field-group-fraud" style="display: none;">
+                            <div class="form-group">
+                                <label for="fraudIndicators">Suspicious Indicators</label>
+                                <input type="text" id="fraudIndicators" class="form-control" value="Altered invoice date or duplicate billing submission">
+                            </div>
+                            <div class="form-group">
+                                <label for="fraudReason">Investigation Notes *</label>
+                                <textarea id="fraudReason" class="form-control" rows="3" placeholder="Document specific inconsistencies observed in itemized hospital charges"></textarea>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px; display: flex; gap: 12px; flex-direction: column;">
+                            <button type="submit" id="btn-submit-decision" class="btn btn-success btn-block" style="font-weight: 700;">
+                                Confirm & Record Approval
+                            </button>
+                            <a th:href="@{/claims-review/queue}" class="btn btn-secondary btn-block" style="text-align: center;">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script th:inline="javascript">
+        const claimId = /*[[${claim.id}]]*/ 3;
+        const claimNum = /*[[${claim.claimNumber}]]*/ 'CLM-LK-9023';
+        const defaultAmount = /*[[${claim.claimAmount}]]*/ 0;
+        const claimStatus = /*[[${claim.status}]]*/ 'SUBMITTED';
+
+        // Read - past ClaimReview records for this claim
+        function loadReviewHistory() {
+            const box = document.getElementById('review-history-body');
+            fetch('/api/claims-review/history/' + claimId)
+                .then(res => res.json())
+                .then(reviews => {
+                    if (reviews.length === 0) {
+                        box.textContent = 'No review decisions recorded yet for this claim.';
+                        return;
+                    }
+                    box.innerHTML = reviews.map(r => {
+                        const finalized = (r.decision === 'APPROVED' || r.decision === 'REJECTED');
+                        const actions = finalized
+                            ? '<span style="color: var(--slate-400);">Finalized - permanent record</span>'
+                            : '<button class="btn btn-sm btn-secondary" onclick="editReviewNote(' + r.id + ')">Edit note</button> ' +
+                              '<button class="btn btn-sm btn-danger-outline" onclick="deleteReview(' + r.id + ')">Delete</button>';
+                        return '<div style="padding: 10px 0; border-bottom: 1px solid var(--border);">' +
+                            '<strong>' + r.decision + '</strong> by ' + r.reviewerUsername +
+                            ' on ' + (r.reviewedAt || '').replace('T', ' ') +
+                            '<div style="margin: 4px 0;" id="note-text-' + r.id + '">' + (r.reviewerNotes || '<em>No notes</em>') + '</div>' +
+                            '<div>' + actions + '</div>' +
+                            '</div>';
+                    }).join('');
+                })
+                .catch(() => { box.textContent = 'Failed to load review history.'; });
+        }
+
+        // Update - edit a not-yet-finalized review's notes
+        function editReviewNote(reviewId) {
+            const newNotes = prompt('Update reviewer notes:');
+            if (!newNotes) return;
+            fetch('/api/claims-review/' + reviewId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reviewerNotes: newNotes })
+            })
+            .then(async response => {
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.message || 'Failed to update review note');
+                }
+                loadReviewHistory();
+            })
+            .catch(err => alert(err.message));
+        }
+
+        // Delete - retract an in-progress (ESCALATED / FLAGGED_FOR_FRAUD) review
+        function deleteReview(reviewId) {
+            if (!confirm('Delete this review record? The claim will revert to UNDER_REVIEW.')) return;
+            fetch('/api/claims-review/' + reviewId, { method: 'DELETE' })
+            .then(async response => {
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.message || 'Failed to delete review record');
+                }
+                loadReviewHistory();
+                window.location.reload();
+            })
+            .catch(err => alert(err.message));
+        }
+
+        loadReviewHistory();
+
+        let activeAction = 'approve';
+
+        function selectAction(action) {
+            activeAction = action;
+            document.querySelectorAll('.decision-btn').forEach(btn => btn.classList.remove('active'));
+
+            const submitBtn = document.getElementById('btn-submit-decision');
+            document.getElementById('field-group-approve').style.display = 'none';
+            document.getElementById('field-group-reject').style.display = 'none';
+            document.getElementById('field-group-escalate').style.display = 'none';
+            document.getElementById('field-group-fraud').style.display = 'none';
+
+            if (action === 'approve') {
+                document.querySelector('.btn-act-approve').classList.add('active');
+                document.getElementById('field-group-approve').style.display = 'block';
+                submitBtn.className = 'btn btn-success btn-block';
+                submitBtn.textContent = 'Confirm & Record Approval';
+            } else if (action === 'reject') {
+                document.querySelector('.btn-act-reject').classList.add('active');
+                document.getElementById('field-group-reject').style.display = 'block';
+                submitBtn.className = 'btn btn-danger btn-block';
+                submitBtn.textContent = 'Confirm Rejection Decision';
+            } else if (action === 'escalate') {
+                document.querySelector('.btn-act-escalate').classList.add('active');
+                document.getElementById('field-group-escalate').style.display = 'block';
+                submitBtn.className = 'btn btn-primary btn-block';
+                submitBtn.textContent = 'Escalate to Operations Management';
+            } else if (action === 'flagFraud') {
+                document.querySelector('.btn-act-fraud').classList.add('active');
+                document.getElementById('field-group-fraud').style.display = 'block';
+                submitBtn.className = 'btn btn-secondary btn-block';
+                submitBtn.style.background = '#db2777';
+                submitBtn.style.borderColor = '#db2777';
+                submitBtn.style.color = '#ffffff';
+                submitBtn.textContent = 'Flag for Special Investigation';
+            }
+        }
+
+        function submitAdjudication(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('eval-alert');
+            alertBox.style.display = 'none';
+
+            let endpoint = '';
+            let payload = {};
+
+            if (activeAction === 'approve') {
+                const amt = document.getElementById('approvedAmount').value;
+                const notes = document.getElementById('approveNotes').value.trim();
+                if (!amt || parseFloat(amt) <= 0) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'Please enter a valid approved payout amount.';
+                    alertBox.style.display = 'block';
+                    return;
+                }
+                if (parseFloat(amt) > parseFloat(defaultAmount)) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'Approved amount cannot exceed the submitted claim amount.';
+                    alertBox.style.display = 'block';
+                    return;
+                }
+                if (parseFloat(defaultAmount) > 250000 && claimStatus !== 'ESCALATED') {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'High-value claims above Rs. 250,000 must be escalated before approval.';
+                    alertBox.style.display = 'block';
+                    return;
+                }
+                endpoint = '/api/claims-review/approve';
+                payload = {
+                    claimId: claimId,
+                    decision: 'APPROVED',
+                    approvedAmount: amt,
+                    reviewerNotes: notes || 'Adjudicated and verified eligible for settlement'
+                };
+            } else if (activeAction === 'reject') {
+                const reason = document.getElementById('rejectReason').value.trim();
+                if (!reason) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'Please provide the rejection justification.';
+                    alertBox.style.display = 'block';
+                    return;
+                }
+                endpoint = '/api/claims-review/reject';
+                payload = {
+                    claimId: claimId,
+                    decision: 'REJECTED',
+                    reviewerNotes: reason
+                };
+            } else if (activeAction === 'escalate') {
+                const reason = document.getElementById('escalateReason').value.trim();
+                const priority = document.getElementById('escalatePriority').value;
+                if (!reason) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'Please provide an escalation rationale.';
+                    alertBox.style.display = 'block';
+                    return;
+                }
+                endpoint = '/api/claims-review/escalate';
+                payload = {
+                    claimId: claimId,
+                    reason: reason,
+                    priority: priority
+                };
+            } else if (activeAction === 'flagFraud') {
+                const reason = document.getElementById('fraudReason').value.trim();
+                const indicators = document.getElementById('fraudIndicators').value.trim();
+                if (!reason || !indicators) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'Please provide both investigation notes and fraud indicators.';
+                    alertBox.style.display = 'block';
+                    return;
+                }
+                endpoint = '/api/claims-review/flag-fraud';
+                payload = {
+                    claimId: claimId,
+                    reason: reason,
+                    fraudIndicators: indicators
+                };
+            }
+
+            const submitBtn = document.getElementById('btn-submit-decision');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting Decision...';
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async res => {
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.message || 'Adjudication submission failed');
+                }
+                alertBox.className = 'alert alert-success';
+                alertBox.textContent = 'Claim ' + claimNum + ' decision successfully recorded (' + data.status + ')! Redirecting to queue...';
+                alertBox.style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = '/claims-review/queue';
+                }, 1500);
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                selectAction(activeAction);
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = err.message || 'Error executing adjudication action.';
+                alertBox.style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
