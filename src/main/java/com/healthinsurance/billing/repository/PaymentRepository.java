@@ -1,0 +1,18 @@
+package com.healthinsurance.billing.repository;
+
+import com.healthinsurance.billing.entity.Payment;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface PaymentRepository extends JpaRepository<Payment, Long> {
+
+    List<Payment> findByCustomerUsername(String username);
+
+    Optional<Payment> findByTransactionReference(String reference);
+
+    List<Payment> findByPolicyId(Long policyId);
+}
