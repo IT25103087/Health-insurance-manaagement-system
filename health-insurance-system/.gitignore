@@ -1,0 +1,28 @@
+# Maven build output
+target/
+
+# Runtime uploads
+uploads/
+
+# IDE settings
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Java crash logs
+hs_err_pid*
+replay_pid*
