@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claims Review Queue - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card">
+            <h2 class="card-title">Claims Adjudication & Review Queue</h2>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">
+                Review incoming customer and hospital cashless claims, evaluate invoices, and approve or escalate decisions.
+            </p>
+
+            <div id="action-box" style="display: none; background: #f8fafc; border: 1px solid var(--border); padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <h4 id="action-title" style="color: var(--primary); margin-bottom: 10px;">Adjudication Action</h4>
+                <div class="form-group">
+                    <label>Claim: <strong id="action-claim-num"></strong></label>
+                </div>
+                <div id="approve-field" class="form-group">
+                    <label for="approvedAmount">Approved Payout Amount (Rs. LKR)</label>
+                    <input type="number" id="approvedAmount" class="form-control" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="actionNotes">Officer Notes / Reason</label>
+                    <textarea id="actionNotes" class="form-control" rows="2" placeholder="Document reason for decision"></textarea>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="confirmAction()">Confirm Decision</button>
+                <button class="btn btn-sm btn-secondary" onclick="closeActionBox()">Cancel</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Claim Number</th>
+                            <th>Policy Number</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Hospital</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Bills/Receipts</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(pendingClaims)}">
+                            <td colspan="9" style="text-align: center; color: var(--text-muted);">
+                                No claims awaiting review in the queue.
+                            </td>
+                        </tr>
+                        <tr th:each="c : ${pendingClaims}">
+                            <td>
+                                <a th:href="@{'/claims-review/evaluate/' + ${c.id}}" style="color: var(--primary); text-decoration: none; font-weight: 700;">
+                                    <span th:text="${c.claimNumber}">CLM-123456</span>
+                                </a>
+                            </td>
+                            <td th:text="${c.policyNumber}">POL-123456</td>
+                            <td th:text="${c.claimType}">REIMBURSEMENT</td>
+                            <td>Rs. <span th:text="${#numbers.formatDecimal(c.claimAmount, 0, 'COMMA', 2, 'POINT')}">85,000.00</span></td>
+                            <td th:text="${c.hospitalName}">General Hospital</td>
+                            <td th:text="${c.description}">Treatment notes</td>
+                            <td>
+                                <span th:if="${c.status == 'SUBMITTED'}" class="badge badge-info">SUBMITTED</span>
+                                <span th:if="${c.status == 'UNDER_REVIEW'}" class="badge badge-warning">UNDER REVIEW</span>
+                                <span th:if="${c.status == 'ESCALATED'}" class="badge badge-primary">ESCALATED</span>
+                            </td>
+                            <td>
+                                <span th:if="${#lists.isEmpty(c.documentNames)}" style="color: var(--text-muted);">None</span>
+                                <ul th:unless="${#lists.isEmpty(c.documentNames)}" style="list-style: none; font-size: 11px; margin: 0; padding: 0;">
+                                    <li th:each="doc : ${c.documentNames}" th:text="${doc}">bill.pdf</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
+                                    <a th:href="@{'/claims-review/evaluate/' + ${c.id}}" class="btn btn-sm btn-primary">Evaluate</a>
+                                    <button class="btn btn-sm btn-success" th:onclick="'openAction(' + ${c.id} + ', \'' + ${c.claimNumber} + '\', ' + ${c.claimAmount} + ', \'approve\')'">Approve</button>
+                                    <button class="btn btn-sm btn-danger" th:onclick="'openAction(' + ${c.id} + ', \'' + ${c.claimNumber} + '\', ' + ${c.claimAmount} + ', \'reject\')'">Reject</button>
+                                    <button class="btn btn-sm btn-info" th:onclick="'openAction(' + ${c.id} + ', \'' + ${c.claimNumber} + '\', ' + ${c.claimAmount} + ', \'escalate\')'">Escalate</button>
+                                    <button class="btn btn-sm btn-secondary" th:onclick="'openAction(' + ${c.id} + ', \'' + ${c.claimNumber} + '\', ' + ${c.claimAmount} + ', \'flagFraud\')'">Fraud</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        let currentClaimId = null;
+        let currentActionType = null;
+
+        function openAction(claimId, claimNumber, amount, actionType) {
+            currentClaimId = claimId;
+            currentActionType = actionType;
+            document.getElementById('action-claim-num').textContent = '#' + claimNumber;
+            document.getElementById('action-title').textContent = 'Action: ' + actionType.toUpperCase();
+            document.getElementById('approve-field').style.display = actionType === 'approve' ? 'block' : 'none';
+            document.getElementById('approvedAmount').value = amount;
+            document.getElementById('actionNotes').value = '';
+            document.getElementById('action-box').style.display = 'block';
+        }
+
+        function closeActionBox() {
+            document.getElementById('action-box').style.display = 'none';
+        }
+
+        function confirmAction() {
+            const notes = document.getElementById('actionNotes').value.trim();
+            let endpoint = '';
+            let payload = {};
+
+            if (currentActionType === 'approve') {
+                endpoint = '/api/claims-review/approve';
+                payload = {
+                    claimId: currentClaimId,
+                    decision: 'APPROVED',
+                    approvedAmount: document.getElementById('approvedAmount').value,
+                    reviewerNotes: notes || 'Standard approval'
+                };
+            } else if (currentActionType === 'reject') {
+                endpoint = '/api/claims-review/reject';
+                payload = {
+                    claimId: currentClaimId,
+                    decision: 'REJECTED',
+                    reviewerNotes: notes || 'Claim does not meet coverage guidelines'
+                };
+            } else if (currentActionType === 'escalate') {
+                endpoint = '/api/claims-review/escalate';
+                payload = {
+                    claimId: currentClaimId,
+                    reason: notes || 'High-value claim escalation to Operations Manager',
+                    priority: 'HIGH'
+                };
+            } else if (currentActionType === 'flagFraud') {
+                endpoint = '/api/claims-review/flag-fraud';
+                payload = {
+                    claimId: currentClaimId,
+                    reason: notes || 'Suspicious invoice details',
+                    fraudIndicators: 'Duplicate submission or altered receipt'
+                };
+            }
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async res => {
+                if (!res.ok) {
+                    const d = await res.json();
+                    throw new Error(d.message || 'Action failed');
+                }
+                alert('Claim decision submitted successfully!');
+                window.location.reload();
+            })
+            .catch(e => alert(e.message));
+        }
+    </script>
+</body>
+</html>

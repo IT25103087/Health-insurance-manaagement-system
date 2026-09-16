@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Claim - HealthShield</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card" style="max-width: 640px; margin: 32px auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h2 class="card-title" style="margin-bottom: 4px;">Edit Reimbursement Claim</h2>
+                    <p style="font-size: 13px; color: var(--slate-500); margin: 0;">
+                        Claim Reference: <strong th:text="${claim.claimNumber}">CLM-1001</strong> &bull;
+                        Status: <span class="badge badge-warning" th:text="${claim.status}">SUBMITTED</span>
+                    </p>
+                </div>
+                <a th:href="@{/claims/my}" class="btn btn-sm btn-secondary">Back to Claims</a>
+            </div>
+
+            <div id="alert-box" style="display: none;" class="alert"></div>
+
+            <form id="edit-claim-form" novalidate>
+                <input type="hidden" id="claimId" th:value="${claim.id}">
+
+                <div class="form-group">
+                    <label for="policyNumber">Insured Policy</label>
+                    <input type="text" id="policyNumber" class="form-control" th:value="${claim.policyNumber}" readonly style="background-color: var(--slate-50); color: var(--slate-600);">
+                </div>
+
+                <div class="form-group">
+                    <label for="claimAmount">Claim Amount (Rs. LKR) *</label>
+                    <input type="number" id="claimAmount" class="form-control" step="0.01" min="1"
+                           th:value="${claim.claimAmount}" placeholder="e.g. 85000.00" required>
+                    <span class="field-error" id="err-claimAmount"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="hospitalName">Hospital / Medical Center *</label>
+                    <input type="text" id="hospitalName" class="form-control"
+                           th:value="${claim.hospitalName}" placeholder="e.g. Asiri Central Hospital, Nawaloka Hospital" required>
+                    <span class="field-error" id="err-hospitalName"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Treatment & Diagnosis Summary *</label>
+                    <textarea id="description" class="form-control" rows="3"
+                              placeholder="Describe medical condition and treatments received" required th:text="${claim.description}"></textarea>
+                    <span class="field-error" id="err-description"></span>
+                </div>
+
+                <!-- Existing Documents Section -->
+                <div class="form-group" th:if="${claim.documentNames != null and !#lists.isEmpty(claim.documentNames)}">
+                    <label>Currently Attached Documents</label>
+                    <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 10px 14px;">
+                        <ul style="list-style: none; margin: 0; padding: 0; font-size: 13px;">
+                            <li th:each="doc : ${claim.documentNames}" style="padding: 3px 0; color: var(--slate-700); display: flex; align-items: center; gap: 6px;">
+                                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--primary);"></span>
+                                <span th:text="${doc}">bill.pdf</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="files">Attach Additional Medical Bills or Receipts (Optional)</label>
+                    <input type="file" id="files" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png">
+                    <small style="color: var(--slate-400); font-size: 12px;">Supported formats: PDF, PNG, JPG.</small>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                    <a th:href="@{/claims/my}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function setClaimError(id, msg) {
+            const input = document.getElementById(id);
+            const err = document.getElementById('err-' + id);
+            if (msg) {
+                input.classList.add('is-invalid');
+                err.textContent = msg;
+                err.classList.add('visible');
+            } else {
+                input.classList.remove('is-invalid');
+                err.textContent = '';
+                err.classList.remove('visible');
+            }
+        }
+
+        document.getElementById('claimAmount').addEventListener('input', function() {
+            if (parseFloat(this.value) > 0) setClaimError('claimAmount', '');
+        });
+        document.getElementById('hospitalName').addEventListener('input', function() {
+            if (this.value.trim().length >= 2) setClaimError('hospitalName', '');
+        });
+        document.getElementById('description').addEventListener('input', function() {
+            if (this.value.trim().length >= 5) setClaimError('description', '');
+        });
+
+        document.getElementById('edit-claim-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            alertBox.style.display = 'none';
+
+            const claimId = document.getElementById('claimId').value;
+            const claimAmount = parseFloat(document.getElementById('claimAmount').value);
+            const hospitalName = document.getElementById('hospitalName').value.trim();
+            const description = document.getElementById('description').value.trim();
+
+            let valid = true;
+            if (!claimAmount || claimAmount <= 0) {
+                setClaimError('claimAmount', 'Please enter a valid positive claim amount');
+                valid = false;
+            }
+            if (!hospitalName || hospitalName.length < 2) {
+                setClaimError('hospitalName', 'Hospital name is required');
+                valid = false;
+            }
+            if (!description || description.length < 5) {
+                setClaimError('description', 'Please provide a diagnosis or treatment summary');
+                valid = false;
+            }
+
+            if (!valid) return;
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving Changes...';
+
+            const submissionData = {
+                claimAmount: claimAmount,
+                hospitalName: hospitalName,
+                description: description
+            };
+
+            const formData = new FormData();
+            formData.append('data', new Blob([JSON.stringify(submissionData)], { type: 'application/json' }));
+
+            const fileInput = document.getElementById('files');
+            if (fileInput.files.length > 0) {
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append('files', fileInput.files[i]);
+                }
+            }
+
+            fetch('/api/claims/' + claimId, {
+                method: 'PUT',
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to update claim');
+                }
+                alertBox.className = 'alert alert-success';
+                alertBox.textContent = 'Claim updated successfully. Redirecting to your claims list...';
+                alertBox.style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = '/claims/my';
+                }, 1000);
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Changes';
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = error.message;
+                alertBox.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

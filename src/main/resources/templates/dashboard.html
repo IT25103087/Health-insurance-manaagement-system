@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - HealthShield</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="page-header">
+            <div class="dashboard-header-left">
+                <div class="dashboard-title-row">
+                    <h1 th:text="'Welcome, ' + ${user.fullName}">Welcome</h1>
+                    <span class="badge"
+                          th:classappend="${user.role.name() == 'CUSTOMER' ? 'role-badge-customer' : (user.role.name() == 'CLAIMS_OFFICER' ? 'role-badge-officer' : (user.role.name() == 'SYSTEM_ADMIN' ? 'role-badge-admin' : 'role-badge-manager'))}">
+                        <span class="badge-dot"></span>
+                        <span th:text="${user.role}">CUSTOMER</span>
+                    </span>
+                </div>
+            </div>
+
+            <div>
+                <a th:if="${user.role.name() == 'CUSTOMER'}" th:href="@{/claims/submit}" class="btn btn-primary">
+                    Submit a claim
+                </a>
+                <a th:if="${user.role.name() == 'CLAIMS_OFFICER'}" th:href="@{/claims-review/queue}" class="btn btn-primary">
+                    Open review queue
+                </a>
+                <a th:if="${user.role.name() == 'HOSPITAL_OFFICER'}" th:href="@{/claims/eligibility}" class="btn btn-primary">
+                    Hospital eligibility desk
+                </a>
+                <a th:if="${user.role.name() == 'OPERATIONS_MANAGER'}" th:href="@{/reporting/analytics}" class="btn btn-primary">
+                    View operations analytics
+                </a>
+                <a th:if="${user.role.name() == 'SUPPORT_REP'}" th:href="@{/billing/refunds}" class="btn btn-primary">
+                    Manage refund requests
+                </a>
+                <div th:if="${user.role.name() == 'SYSTEM_ADMIN'}" style="display: flex; gap: 8px;">
+                    <a th:href="@{/admin/users}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        User Accounts
+                    </a>
+                    <a th:href="@{/reporting/analytics}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        Analytics Reports
+                    </a>
+                </div>
+                <a th:if="${user.role.name() != 'CUSTOMER' and user.role.name() != 'CLAIMS_OFFICER' and user.role.name() != 'HOSPITAL_OFFICER' and user.role.name() != 'OPERATIONS_MANAGER' and user.role.name() != 'SUPPORT_REP' and user.role.name() != 'SYSTEM_ADMIN'}"
+                   th:href="@{/policies/plans}" class="btn btn-primary">
+                    Browse plans
+                </a>
+            </div>
+        </div>
+
+        <div th:if="${user.role.name() == 'CUSTOMER'}">
+            <div class="grid-stats">
+                <div class="stat-card stat-success">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <path d="m9 12 2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Active</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Active policies</div>
+                        <div class="stat-card-value" th:text="${activePoliciesCount}">0</div>
+                        <div class="stat-card-subtext">Currently enrolled coverage</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-warning">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">In Review</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Pending claims</div>
+                        <div class="stat-card-value" th:text="${pendingClaimsCount}">0</div>
+                        <div class="stat-card-subtext">Awaiting adjudication</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-primary">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Approved</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Approved claims</div>
+                        <div class="stat-card-value" th:text="${approvedClaimsCount}">0</div>
+                        <div class="stat-card-subtext">Successfully settled</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-violet">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="20" height="14" x="2" y="5" rx="2"/>
+                                <line x1="2" x2="22" y1="10" y2="10"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Settled</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Approved payouts</div>
+                        <div class="stat-card-value"
+                             th:text="'Rs. ' + ${#numbers.formatDecimal(totalApprovedPayout != null ? totalApprovedPayout : 0, 1, 'COMMA', 2, 'POINT')}">
+                            Rs. 0.00
+                        </div>
+                        <div class="stat-card-subtext">Cumulative disbursed value</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>Recent claims</span>
+                    <a th:href="@{/claims/my}" class="btn btn-sm btn-secondary">View all claims</a>
+                </div>
+
+                <div th:if="${claims == null or #lists.isEmpty(claims)}" class="empty-state">
+                    <p>No claims submitted yet.</p>
+                    <a th:href="@{/claims/submit}" class="btn btn-sm btn-primary">Submit your first claim</a>
+                </div>
+
+                <div th:if="${claims != null and !#lists.isEmpty(claims)}" class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Claim ID</th>
+                                <th>Policy</th>
+                                <th>Diagnosis / Treatment</th>
+                                <th>Submission Date</th>
+                                <th>Claim Amount</th>
+                                <th>Approved</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c, iter : ${claims}" th:if="${iter.index < 5}"
+                                th:classappend="${c.status == 'APPROVED' ? 'row-approved' : (c.status == 'REJECTED' ? 'row-rejected' : 'row-pending')}">
+                                <td th:text="${c.claimNumber}" style="font-weight: 600; color: var(--slate-900);">CLM-1001</td>
+                                <td th:text="${c.policyNumber}">POL-1001</td>
+                                <td th:text="${c.description != null ? c.description : (c.hospitalName != null ? c.hospitalName : 'Medical claim')}">Emergency Treatment</td>
+                                <td th:text="${c.submittedAt != null ? #temporals.format(c.submittedAt, 'yyyy-MM-dd') : '-'}">2026-03-01</td>
+                                <td th:text="'Rs. ' + ${#numbers.formatDecimal(c.claimAmount, 1, 'COMMA', 2, 'POINT')}">Rs. 0.00</td>
+                                <td th:text="${c.approvedAmount != null ? 'Rs. ' + #numbers.formatDecimal(c.approvedAmount, 1, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                <td>
+                                    <span th:if="${c.status == 'APPROVED'}" class="badge badge-success">
+                                        <span class="badge-dot"></span>Approved
+                                    </span>
+                                    <span th:if="${c.status == 'REJECTED'}" class="badge badge-danger">
+                                        <span class="badge-dot"></span>Rejected
+                                    </span>
+                                    <span th:if="${c.status == 'SUBMITTED' or c.status == 'UNDER_REVIEW'}" class="badge badge-warning">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${c.status == 'UNDER_REVIEW' ? 'Under review' : 'Submitted'}">Submitted</span>
+                                    </span>
+                                    <span th:if="${c.status != 'APPROVED' and c.status != 'REJECTED' and c.status != 'SUBMITTED' and c.status != 'UNDER_REVIEW'}" class="badge badge-primary">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${c.status}">Status</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/claims/my}" class="btn btn-sm btn-secondary">Details</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>Enrolled insurance policies</span>
+                    <a th:href="@{/policies/my}" class="btn btn-sm btn-secondary">Manage policies</a>
+                </div>
+
+                <div th:if="${policies == null or #lists.isEmpty(policies)}" class="empty-state">
+                    <p>No active insurance policies found.</p>
+                    <a th:href="@{/policies/plans}" class="btn btn-sm btn-primary">Explore coverage plans</a>
+                </div>
+
+                <div th:if="${policies != null and !#lists.isEmpty(policies)}" class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Policy number</th>
+                                <th>Plan name</th>
+                                <th>Coverage period</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="p, iter : ${policies}" th:if="${iter.index < 5}"
+                                th:classappend="${p.status == 'ACTIVE' or p.status == 'RENEWED' ? 'row-active' : (p.status == 'EXPIRED' or p.status == 'CANCELLED' ? 'row-rejected' : 'row-pending')}">
+                                <td th:text="${p.policyNumber}" style="font-weight: 600; color: var(--slate-900);">POL-1001</td>
+                                <td th:text="${p.planName}">Platinum Care</td>
+                                <td>
+                                    <span th:text="${p.startDate != null ? #temporals.format(p.startDate, 'yyyy-MM-dd') : '-'}">2026-01-01</span>
+                                    to
+                                    <span th:text="${p.endDate != null ? #temporals.format(p.endDate, 'yyyy-MM-dd') : '-'}">2027-01-01</span>
+                                </td>
+                                <td>
+                                    <span th:if="${p.status == 'ACTIVE' or p.status == 'RENEWED'}" class="badge badge-success">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${p.status}">ACTIVE</span>
+                                    </span>
+                                    <span th:if="${p.status == 'PENDING' or p.status == 'SUBMITTED'}" class="badge badge-warning">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${p.status}">PENDING</span>
+                                    </span>
+                                    <span th:if="${p.status == 'EXPIRED' or p.status == 'CANCELLED'}" class="badge badge-danger">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${p.status}">EXPIRED</span>
+                                    </span>
+                                    <span th:if="${p.status != 'ACTIVE' and p.status != 'RENEWED' and p.status != 'PENDING' and p.status != 'SUBMITTED' and p.status != 'EXPIRED' and p.status != 'CANCELLED'}" class="badge badge-primary">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${p.status}">STATUS</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/policies/my}" class="btn btn-sm btn-secondary">View policy</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${user.role.name() == 'CLAIMS_OFFICER'}">
+            <div class="grid-stats">
+                <div class="stat-card stat-warning">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Needs Action</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Pending in review queue</div>
+                        <div class="stat-card-value" th:text="${pendingReviewCount}">0</div>
+                        <div class="stat-card-subtext">Requires adjudication decision</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-primary">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">In-Flight</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Total system open claims</div>
+                        <div class="stat-card-value" th:text="${metrics != null ? metrics.openClaims : 0}">0</div>
+                        <div class="stat-card-subtext">In-flight across all stages</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-success">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <path d="m9 12 2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Valid</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Active insured policies</div>
+                        <div class="stat-card-value" th:text="${metrics != null ? metrics.activePolicies : 0}">0</div>
+                        <div class="stat-card-subtext">Valid coverage contracts</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-violet">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="20" height="14" x="2" y="5" rx="2"/>
+                                <line x1="2" x2="22" y1="10" y2="10"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Settled</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Claims disbursed</div>
+                        <div class="stat-card-value"
+                             th:text="'Rs. ' + ${#numbers.formatDecimal(metrics != null and metrics.totalClaimsPaid != null ? metrics.totalClaimsPaid : 0, 1, 'COMMA', 2, 'POINT')}">
+                            Rs. 0.00
+                        </div>
+                        <div class="stat-card-subtext">Total settled reimbursement</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>Adjudication queue</span>
+                    <a th:href="@{/claims-review/queue}" class="btn btn-sm btn-secondary">Open full queue</a>
+                </div>
+
+                <div th:if="${pendingReview == null or #lists.isEmpty(pendingReview)}" class="empty-state">
+                    <p>No claims currently awaiting review.</p>
+                </div>
+
+                <div th:if="${pendingReview != null and !#lists.isEmpty(pendingReview)}" class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Claim ID</th>
+                                <th>Policy number</th>
+                                <th>Diagnosis / Hospital</th>
+                                <th>Submission date</th>
+                                <th>Claim amount</th>
+                                <th>Status</th>
+                                <th>Adjudication</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c, iter : ${pendingReview}" th:if="${iter.index < 8}" class="row-pending">
+                                <td th:text="${c.claimNumber}" style="font-weight: 600; color: var(--slate-900);">CLM-1001</td>
+                                <td th:text="${c.policyNumber}">POL-1001</td>
+                                <td th:text="${c.description != null ? c.description : (c.hospitalName != null ? c.hospitalName : 'Medical claim')}">General Treatment</td>
+                                <td th:text="${c.submittedAt != null ? #temporals.format(c.submittedAt, 'yyyy-MM-dd') : '-'}">2026-03-01</td>
+                                <td th:text="'Rs. ' + ${#numbers.formatDecimal(c.claimAmount, 1, 'COMMA', 2, 'POINT')}">Rs. 0.00</td>
+                                <td>
+                                    <span class="badge badge-warning">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${c.status}">SUBMITTED</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <a th:href="@{'/claims-review/evaluate/' + ${c.id}}" class="btn btn-sm btn-primary">Review</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${user.role.name() == 'SYSTEM_ADMIN'}">
+            <div class="grid-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 24px;">
+                <div class="stat-card stat-primary">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Governance</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Registered Accounts</div>
+                        <div class="stat-card-value" th:text="${totalUsersCount != null ? totalUsersCount : (users != null ? #lists.size(users) : (metrics != null ? metrics.totalUsers : 0))}">0</div>
+                        <div class="stat-card-subtext">Managed system credentials</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-success">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Security</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Active & Enabled</div>
+                        <div class="stat-card-value" th:text="${enabledUsersCount != null ? enabledUsersCount : (users != null ? #lists.size(users.?[enabled]) : 0)}">0</div>
+                        <div class="stat-card-subtext">Authorized login accounts</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-warning">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <path d="m9 12 2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Coverage</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Active Policies</div>
+                        <div class="stat-card-value" th:text="${metrics != null ? metrics.activePolicies : 0}">0</div>
+                        <div class="stat-card-subtext">Currently enrolled coverage</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-violet">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Audit Trail</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Security Events</div>
+                        <div class="stat-card-value" th:text="${auditLogs != null ? #lists.size(auditLogs) : 0}">0</div>
+                        <div class="stat-card-subtext">Recorded authentication actions</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                <div class="card" style="margin-bottom: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--slate-100);">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 700; color: var(--slate-900); margin: 0;">User Accounts & Privileges</h3>
+                            <p style="font-size: 12px; color: var(--slate-500); margin: 2px 0 0 0;">Recent accounts with role-based access status</p>
+                        </div>
+                        <a th:href="@{/admin/users}" class="btn btn-sm btn-secondary">
+                            Manage Users
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Account</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="u, iter : ${users}" th:if="${iter.index < 5}">
+                                    <td>
+                                        <div style="display: flex; flex-direction: column;">
+                                            <strong style="color: var(--slate-900);" th:text="${u.fullName}">User</strong>
+                                            <span style="font-size: 12px; color: var(--slate-400);" th:text="${u.username}">username</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge" th:classappend="${u.role.name() == 'SYSTEM_ADMIN' ? 'role-badge-admin' : (u.role.name() == 'CUSTOMER' ? 'role-badge-customer' : 'role-badge-officer')}" th:text="${u.role}">ROLE</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${u.enabled}" class="badge badge-success">
+                                            <span class="badge-dot"></span>Active
+                                        </span>
+                                        <span th:unless="${u.enabled}" class="badge badge-danger">
+                                            <span class="badge-dot"></span>Disabled
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--slate-100);">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 700; color: var(--slate-900); margin: 0;">Administration Control Hub</h3>
+                            <p style="font-size: 12px; color: var(--slate-500); margin: 2px 0 0 0;">Core system governance and monitoring tools</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <a th:href="@{/admin/users}" style="display: flex; align-items: center; gap: 14px; padding: 14px; background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 12px; text-decoration: none; transition: all 0.15s ease;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #E0F2FE; color: #0284C7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 14px; color: var(--slate-900);">User Identity & RBAC Management</div>
+                                <div style="font-size: 12px; color: var(--slate-500); margin-top: 2px;">Assign roles, manage account privileges, and enable or disable users.</div>
+                            </div>
+                            <span style="color: var(--slate-400); font-size: 16px;">&rarr;</span>
+                        </a>
+
+
+                        <a th:href="@{/reporting/analytics}" style="display: flex; align-items: center; gap: 14px; padding: 14px; background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 12px; text-decoration: none; transition: all 0.15s ease;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #FFFBEB; color: #D97706; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 14px; color: var(--slate-900);">Enterprise Operations & Audit Reports</div>
+                                <div style="font-size: 12px; color: var(--slate-500); margin-top: 2px;">Underwriting KPIs, financial settlement turnover, and official executive PDF exports.</div>
+                            </div>
+                            <span style="color: var(--slate-400); font-size: 16px;">&rarr;</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--slate-100); flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="font-size: 16px; font-weight: 700; color: var(--slate-900); margin: 0;">Security & Audit Event Trail</h3>
+                        <p style="font-size: 12.5px; color: var(--slate-500); margin: 2px 0 0 0;">Recent authentication actions, login records, and role elevations</p>
+                    </div>
+                    <a th:href="@{/admin/users}" class="btn btn-sm btn-secondary">Full Audit Trail</a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Actor / Account</th>
+                                <th>Action Event</th>
+                                <th>Operation Details</th>
+                                <th>IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${auditLogs == null or #lists.isEmpty(auditLogs)}">
+                                <td colspan="5" style="text-align: center; color: var(--slate-400); padding: 24px;">No security events captured yet.</td>
+                            </tr>
+                            <tr th:each="log, iter : ${auditLogs}" th:if="${iter.index < 5}">
+                                <td style="font-size: 12.5px; color: var(--slate-600);" th:text="${log.timestamp}">2026-09-16 11:30:00</td>
+                                <td>
+                                    <strong style="color: var(--slate-900);" th:text="${log.username}">user</strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-info" th:text="${log.action}">ACTION</span>
+                                </td>
+                                <td th:text="${log.details}">Details</td>
+                                <td style="font-family: ui-monospace, monospace; font-size: 12px; color: var(--slate-500);" th:text="${log.ipAddress}">127.0.0.1</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${user.role.name() != 'CUSTOMER' and user.role.name() != 'CLAIMS_OFFICER' and user.role.name() != 'SYSTEM_ADMIN'}">
+            <div class="grid-stats">
+                <div class="stat-card stat-success">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <path d="m9 12 2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Active</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Active policies</div>
+                        <div class="stat-card-value" th:text="${metrics != null ? metrics.activePolicies : 0}">0</div>
+                        <div class="stat-card-subtext">Currently active contracts</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-warning">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">In Queue</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Pending reviews</div>
+                        <div class="stat-card-value" th:text="${metrics != null ? metrics.pendingReviews : 0}">0</div>
+                        <div class="stat-card-subtext">Claims in adjudication queue</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-primary">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Revenue</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Premiums collected</div>
+                        <div class="stat-card-value"
+                             th:text="'Rs. ' + ${#numbers.formatDecimal(metrics != null and metrics.totalPremiumsCollected != null ? metrics.totalPremiumsCollected : 0, 1, 'COMMA', 2, 'POINT')}">
+                            Rs. 0.00
+                        </div>
+                        <div class="stat-card-subtext">Total received revenue</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-violet">
+                    <div class="stat-card-header">
+                        <div class="stat-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="20" height="14" x="2" y="5" rx="2"/>
+                                <line x1="2" x2="22" y1="10" y2="10"/>
+                            </svg>
+                        </div>
+                        <span class="stat-pill">Settled</span>
+                    </div>
+                    <div>
+                        <div class="stat-card-label">Claims paid</div>
+                        <div class="stat-card-value"
+                             th:text="'Rs. ' + ${#numbers.formatDecimal(metrics != null and metrics.totalClaimsPaid != null ? metrics.totalClaimsPaid : 0, 1, 'COMMA', 2, 'POINT')}">
+                            Rs. 0.00
+                        </div>
+                        <div class="stat-card-subtext">Total disbursed payouts</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>Operations overview</span>
+                    <a th:href="@{/reporting/analytics}" class="btn btn-sm btn-secondary">Detailed analytics</a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Operational domain</th>
+                                <th>Scope</th>
+                                <th>Primary function</th>
+                                <th>Navigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong style="color: var(--slate-900);">Claims Adjudication</strong></td>
+                                <td>Claims Review & Adjudication</td>
+                                <td>Evaluate submissions, verify documents, and decide approval amounts</td>
+                                <td><a th:href="@{/claims-review/queue}" class="btn btn-sm btn-secondary">Review queue</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong style="color: var(--slate-900);">Hospital Verification</strong></td>
+                                <td>Desk Eligibility Checks</td>
+                                <td>Validate member policy numbers and coverage eligibility at care facility</td>
+                                <td><a th:href="@{/claims/eligibility}" class="btn btn-sm btn-secondary">Hospital desk</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong style="color: var(--slate-900);">Performance Analytics</strong></td>
+                                <td>Turnaround Time & Reporting</td>
+                                <td>Monitor claim volume trends, resolution velocity, and financial metrics</td>
+                                <td><a th:href="@{/reporting/analytics}" class="btn btn-sm btn-secondary">Analytics</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong style="color: var(--slate-900);">Refund Management</strong></td>
+                                <td>Billing & Reconciliation</td>
+                                <td>Review policyholder refund requests and disburse eligible adjustments</td>
+                                <td><a th:href="@{/billing/refunds}" class="btn btn-sm btn-secondary">Refunds</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refund Requests - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="card">
+            <h2 class="card-title">Customer Refund Requests (Operations Review)</h2>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">
+                Review and process refund disputes submitted by customers and support representatives.
+            </p>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Refund ID</th>
+                            <th>Original Payment ID</th>
+                            <th>Amount</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Requested At</th>
+                            <th>Processed By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(refunds)}">
+                            <td colspan="8" style="text-align: center; color: var(--text-muted);">
+                                No pending refund requests.
+                            </td>
+                        </tr>
+                        <tr th:each="r : ${refunds}">
+                            <td><strong th:text="'#REF-' + ${r.id}">#REF-1</strong></td>
+                            <td th:text="'Payment #' + ${r.paymentId}">Payment #1</td>
+                            <td>Rs. <span th:text="${#numbers.formatDecimal(r.amount, 0, 'COMMA', 2, 'POINT')}">3,500.00</span></td>
+                            <td th:text="${r.reason}">Overpayment</td>
+                            <td><span class="badge badge-warning" th:text="${r.status}">REQUESTED</span></td>
+                            <td th:text="${r.requestedAt}">2026-09-16</td>
+                            <td th:text="${r.processedByUsername != null ? r.processedByUsername : '-'}">-</td>
+                            <td>
+                                <div th:if="${r.status == 'REQUESTED'}" style="display: flex; gap: 6px;">
+                                    <button type="button" class="btn btn-sm btn-success" th:onclick="'processRefund(' + ${r.id} + ', \'approve\')'">Approve</button>
+                                    <button type="button" class="btn btn-sm btn-danger" th:onclick="'processRefund(' + ${r.id} + ', \'reject\')'">Reject</button>
+                                </div>
+                                <span th:unless="${r.status == 'REQUESTED'}" style="color: var(--text-muted);">Completed</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function processRefund(refundId, action) {
+            fetch('/api/billing/refunds/' + refundId + '/' + action, { method: 'POST' })
+                .then(async response => {
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Refund update failed');
+                    }
+                    window.location.reload();
+                })
+                .catch(error => alert(error.message));
+        }
+    </script>
+
+</body>
+</html>

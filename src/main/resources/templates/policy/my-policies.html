@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Policies - HealthShield</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="page-header" style="margin-bottom: 24px;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--slate-400); margin-bottom: 6px;">
+                    <a th:href="@{/dashboard}" style="color: var(--primary); text-decoration: none; font-weight: 500;">Dashboard</a>
+                    <span>/</span>
+                    <span style="color: var(--slate-600); font-weight: 500;">Insurance Policies</span>
+                </div>
+                <h1 style="font-size: 26px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.025em; margin: 0;">
+                    My Insurance Policies
+                </h1>
+                <p style="font-size: 13.5px; color: var(--slate-500); margin-top: 4px; margin-bottom: 0;">
+                    Review active coverage benefits, make premium payments, download official certificates, and manage policy renewals.
+                </p>
+            </div>
+            <div>
+                <a th:href="@{/policies/plans}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Browse Coverage Plans
+                </a>
+            </div>
+        </div>
+
+        <div class="grid-stats grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 24px;">
+            <div class="stat-card stat-primary">
+                <div class="stat-card-header">
+                    <div class="stat-icon-wrapper">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </div>
+                    <span class="stat-pill">Enrolled</span>
+                </div>
+                <div class="stat-card-label">Total Subscriptions</div>
+                <div class="stat-card-value" th:text="${#lists.size(policies)}">0</div>
+                <div class="stat-card-subtext">Issued health policy contracts</div>
+            </div>
+
+            <div class="stat-card stat-success">
+                <div class="stat-card-header">
+                    <div class="stat-icon-wrapper">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    </div>
+                    <span class="stat-pill">In Effect</span>
+                </div>
+                <div class="stat-card-label">Active Coverage</div>
+                <div class="stat-card-value" th:text="${#lists.size(policies.?[status == 'ACTIVE' or status == 'RENEWED'])}">0</div>
+                <div class="stat-card-subtext">Eligible for instant hospital claims</div>
+            </div>
+
+            <div class="stat-card stat-warning">
+                <div class="stat-card-header">
+                    <div class="stat-icon-wrapper">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <span class="stat-pill">Annual Cycle</span>
+                </div>
+                <div class="stat-card-label">Policy Status</div>
+                <div class="stat-card-value" style="font-size: 20px; padding-top: 6px;">12 Months</div>
+                <div class="stat-card-subtext">Standard coverage duration cycle</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--slate-100); flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: var(--slate-900); margin: 0;">Policy Contracts Registry</h3>
+                    <p style="font-size: 12.5px; color: var(--slate-500); margin: 2px 0 0 0;">List of all past and currently active health insurance plans linked to your account.</p>
+                </div>
+                <span class="badge badge-info" th:text="${#lists.size(policies)} + ' Policies Recorded'">0 Policies</span>
+            </div>
+
+            <div id="alert-box" style="display: none;" class="alert"></div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Policy Number</th>
+                            <th>Insurance Plan</th>
+                            <th>Status</th>
+                            <th>Effective Start</th>
+                            <th>Expiry Date</th>
+                            <th>Actions & Operations</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(policies)}">
+                            <td colspan="6" style="text-align: center; color: var(--slate-400); padding: 48px 16px;">
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                                    <div style="width: 48px; height: 48px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    </div>
+                                    <strong style="color: var(--slate-700); font-size: 15px;">No Insurance Policies Found</strong>
+                                    <span style="font-size: 13px; max-width: 360px;">You do not have any active health insurance coverage. Explore our health tiers to activate coverage today.</span>
+                                    <a th:href="@{/policies/plans}" class="btn btn-primary btn-sm" style="margin-top: 6px;">Browse Coverage Plans</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:each="pol : ${policies}">
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 28px; height: 28px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    </div>
+                                    <strong th:text="${pol.policyNumber}" style="font-family: monospace; font-size: 13px; color: var(--slate-900);">POL-123456</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <strong th:text="${pol.planName}" style="color: var(--slate-800); display: block;">Silver Care</strong>
+                                <span style="font-size: 11.5px; color: var(--slate-400);">Comprehensive Tier</span>
+                            </td>
+                            <td>
+                                <span th:if="${pol.status == 'ACTIVE'}" class="badge badge-success">
+                                    <span class="badge-dot"></span>ACTIVE
+                                </span>
+                                <span th:if="${pol.status == 'RENEWED'}" class="badge badge-primary">
+                                    <span class="badge-dot"></span>RENEWED
+                                </span>
+                                <span th:if="${pol.status == 'CANCELLED'}" class="badge badge-danger">
+                                    <span class="badge-dot"></span>CANCELLED
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 5px; color: var(--slate-600); font-size: 13px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--slate-400);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <span th:text="${pol.startDate}">2026-09-16</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 5px; color: var(--slate-600); font-size: 13px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--slate-400);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <span th:text="${pol.endDate}">2027-09-16</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                    <a th:href="@{'/billing/pay?policyId=' + ${pol.id}}" class="btn btn-sm btn-success" title="Pay Premium Bill" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                                        Pay
+                                    </a>
+                                    <a th:href="@{'/api/policies/' + ${pol.id} + '/pdf'}" class="btn btn-sm btn-secondary" target="_blank" title="Download Official Certificate" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                                        PDF
+                                    </a>
+                                    <button th:if="${pol.status != 'CANCELLED'}" class="btn btn-sm btn-info" th:onclick="'renewPolicy(' + ${pol.id} + ')'" title="Renew Coverage for 12 Months" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                        Renew
+                                    </button>
+                                    <button th:if="${pol.status != 'CANCELLED'}" class="btn btn-sm btn-danger-outline" th:onclick="'cancelPolicy(' + ${pol.id} + ')'" title="Cancel Policy" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                        Cancel
+                                    </button>
+                                    <button th:if="${pol.status != 'CANCELLED'}" class="btn btn-sm btn-secondary" th:onclick="'editPolicy(' + ${pol.id} + ')'" title="Edit Policy (switch coverage plan)" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Edit
+                                    </button>
+                                    <button th:if="${pol.status == 'CANCELLED'}" class="btn btn-sm btn-danger-outline" th:onclick="'deletePolicy(' + ${pol.id} + ')'" title="Permanently delete this cancelled policy record" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function renewPolicy(policyId) {
+            if (!confirm('Are you sure you want to renew this policy for an additional 12 months?')) return;
+            fetch('/api/policies/' + policyId + '/renew', { method: 'POST' })
+            .then(async response => {
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.message || 'Failed to renew policy');
+                }
+                window.location.reload();
+            })
+            .catch(err => alert(err.message));
+        }
+
+        function cancelPolicy(policyId) {
+            if (!confirm('Are you sure you want to cancel this insurance policy?')) return;
+            fetch('/api/policies/' + policyId + '/cancel', { method: 'POST' })
+            .then(async response => {
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.message || 'Failed to cancel policy');
+                }
+                window.location.reload();
+            })
+            .catch(err => alert(err.message));
+        }
+
+        // Update - lets the customer/agent switch this policy to a
+        // different coverage plan by ID
+        function editPolicy(policyId) {
+            fetch('/api/policies/plans')
+                .then(res => res.json())
+                .then(plans => {
+                    const options = plans.map(p =>
+                        p.id + ': ' + p.planName + ' (Rs. ' + p.monthlyPremium + '/mo)'
+                    ).join('\n');
+                    const newPlanId = prompt(
+                        'Available plans:\n' + options + '\n\nEnter the Plan ID to switch this policy to:'
+                    );
+                    if (!newPlanId) return;
+
+                    fetch('/api/policies/' + policyId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ planId: parseInt(newPlanId, 10) })
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const data = await response.json().catch(() => ({}));
+                            throw new Error(data.message || 'Failed to update policy');
+                        }
+                        window.location.reload();
+                    })
+                    .catch(err => alert(err.message));
+                })
+                .catch(() => alert('Could not load the list of available plans.'));
+        }
+
+        // Delete - only reachable once a policy is already CANCELLED
+        function deletePolicy(policyId) {
+            if (!confirm('Permanently delete this cancelled policy record? This cannot be undone.')) return;
+            fetch('/api/policies/' + policyId, { method: 'DELETE' })
+            .then(async response => {
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.message || 'Failed to delete policy');
+                }
+                window.location.reload();
+            })
+            .catch(err => alert(err.message));
+        }
+    </script>
+</body>
+</html>

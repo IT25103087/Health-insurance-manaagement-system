@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Health Insurance System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <header th:replace="~{fragments/layout :: navbar}"></header>
+
+    <main class="container">
+        <div class="auth-box" style="max-width: 520px;">
+            <div class="auth-header">
+                <h2>Create an Account</h2>
+                <p>Register to start your health insurance journey</p>
+            </div>
+
+            <div id="alert-box" style="display: none;" class="alert"></div>
+
+            <form id="register-form" novalidate>
+                <div class="form-group">
+                    <label for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" class="form-control" placeholder="Kasun Perera" required>
+                    <span class="field-error" id="err-fullName"></span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="username">Username *</label>
+                        <input type="text" id="username" class="form-control" placeholder="kasun" required autocomplete="username">
+                        <span class="field-error" id="err-username"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" class="form-control" placeholder="kasun.perera@gmail.com" required autocomplete="email">
+                        <span class="field-error" id="err-email"></span>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password">Password *</label>
+                        <input type="password" id="password" class="form-control" placeholder="At least 6 characters" required autocomplete="new-password">
+                        <span class="field-error" id="err-password"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phoneNumber">Phone Number</label>
+                        <input type="text" id="phoneNumber" class="form-control" placeholder="+94 77 123 4567">
+                        <span class="field-error" id="err-phoneNumber"></span>
+                    </div>
+                </div>
+
+
+                <button type="submit" class="btn btn-primary btn-block">Register Account</button>
+            </form>
+
+            <div style="margin-top: 20px; text-align: center; font-size: 14px;">
+                <span>Already have an account? </span>
+                <a th:href="@{/login}" style="color: var(--primary); font-weight: 500;">Sign in here</a>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function setFieldError(fieldId, errorMsg) {
+            const input = document.getElementById(fieldId);
+            const errSpan = document.getElementById('err-' + fieldId);
+            if (errorMsg) {
+                input.classList.add('is-invalid');
+                errSpan.textContent = errorMsg;
+                errSpan.classList.add('visible');
+            } else {
+                input.classList.remove('is-invalid');
+                errSpan.textContent = '';
+                errSpan.classList.remove('visible');
+            }
+        }
+
+        function validateFullName() {
+            const val = document.getElementById('fullName').value.trim();
+            if (!val) {
+                setFieldError('fullName', 'Full name is required');
+                return false;
+            }
+            if (val.length < 2) {
+                setFieldError('fullName', 'Full name must be at least 2 characters');
+                return false;
+            }
+            if (!/^[a-zA-Z\s.'-]+$/.test(val)) {
+                setFieldError('fullName', 'Full name can only contain letters and standard characters');
+                return false;
+            }
+            setFieldError('fullName', '');
+            return true;
+        }
+
+        function validateUsername() {
+            const val = document.getElementById('username').value.trim();
+            if (!val) {
+                setFieldError('username', 'Username is required');
+                return false;
+            }
+            if (val.length < 3 || val.length > 30) {
+                setFieldError('username', 'Username must be between 3 and 30 characters');
+                return false;
+            }
+            if (!/^[a-zA-Z0-9_.]+$/.test(val)) {
+                setFieldError('username', 'Username can only contain letters, numbers, dot, or underscore');
+                return false;
+            }
+            setFieldError('username', '');
+            return true;
+        }
+
+        function validateEmail() {
+            const val = document.getElementById('email').value.trim();
+            if (!val) {
+                setFieldError('email', 'Email address is required');
+                return false;
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(val)) {
+                setFieldError('email', 'Please enter a valid email address (e.g. name@domain.com)');
+                return false;
+            }
+            setFieldError('email', '');
+            return true;
+        }
+
+        function validatePassword() {
+            const val = document.getElementById('password').value;
+            if (!val) {
+                setFieldError('password', 'Password is required');
+                return false;
+            }
+            if (val.length < 6) {
+                setFieldError('password', 'Password must be at least 6 characters long');
+                return false;
+            }
+            setFieldError('password', '');
+            return true;
+        }
+
+        function validatePhone() {
+            const val = document.getElementById('phoneNumber').value.trim();
+            if (!val) {
+                setFieldError('phoneNumber', '');
+                return true;
+            }
+            // Sri Lankan numbers: +94 7X XXX XXXX or 07XXXXXXXX or international 9-15 digits
+            const phoneRegex = /^(\+94\s?7\d{8}|07\d{8}|\+?[0-9]{9,15})$/;
+            const cleaned = val.replace(/[\s-]/g, '');
+            if (!phoneRegex.test(val) && !phoneRegex.test(cleaned)) {
+                setFieldError('phoneNumber', 'Valid formats: +94 77 123 4567 or 0771234567');
+                return false;
+            }
+            setFieldError('phoneNumber', '');
+            return true;
+        }
+
+        document.getElementById('fullName').addEventListener('blur', validateFullName);
+        document.getElementById('username').addEventListener('blur', validateUsername);
+        document.getElementById('email').addEventListener('blur', validateEmail);
+        document.getElementById('password').addEventListener('blur', validatePassword);
+        document.getElementById('phoneNumber').addEventListener('blur', validatePhone);
+
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            alertBox.style.display = 'none';
+
+            const isValid = [
+                validateFullName(),
+                validateUsername(),
+                validateEmail(),
+                validatePassword(),
+                validatePhone()
+            ].every(Boolean);
+
+            if (!isValid) {
+                return;
+            }
+
+            const payload = {
+                fullName: document.getElementById('fullName').value.trim(),
+                username: document.getElementById('username').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                password: document.getElementById('password').value,
+                phoneNumber: document.getElementById('phoneNumber').value.trim(),
+                role: 'CUSTOMER'
+            };
+
+            fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    if (data.validationErrors) {
+                        for (const [field, msg] of Object.entries(data.validationErrors)) {
+                            setFieldError(field, msg);
+                        }
+                        const firstError = Object.values(data.validationErrors)[0];
+                        throw new Error(firstError);
+                    }
+                    throw new Error(data.message || 'Registration failed');
+                }
+                // Cookie is set automatically via HttpOnly Set-Cookie header
+                window.location.href = '/dashboard';
+            })
+            .catch(error => {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = error.message;
+                alertBox.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>
